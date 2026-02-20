@@ -114,7 +114,6 @@ export default function YardsApp() {
   const [showCreate, setShowCreate] = useState(false);
   const [dist, setDist] = useState(10);
   const [distOpen, setDistOpen] = useState(false);
-  const [unit, setUnit] = useState("mi"); // "mi" or "km"
   const [catFilter, setCatFilter] = useState(null); // null = all, or a category string
   const [showCatFilter, setShowCatFilter] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -126,10 +125,32 @@ export default function YardsApp() {
   const [locErr, setLocErr] = useState(null);
   const [locLoading, setLocLoading] = useState(true);
 
-  // User + sales
-  const [user, setUser] = useState(null);
-  const [users, setUsers] = useState([]);
+  // User + sales — load from localStorage if available
+  const [user, setUser] = useState(() => {
+    try { const s = localStorage.getItem("yards_user"); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
+  const [users, setUsers] = useState(() => {
+    try { const s = localStorage.getItem("yards_users"); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  const [userSales, setUserSales] = useState(() => {
+    try { const s = localStorage.getItem("yards_user_sales"); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
   const [sales, setSales] = useState([]);
+  const [unit, _setUnit] = useState(() => {
+    try { return localStorage.getItem("yards_unit") || "mi"; } catch { return "mi"; }
+  });
+  const setUnit = (u) => { _setUnit(u); try { localStorage.setItem("yards_unit", u); } catch {} };
+
+  // Persist user data whenever it changes
+  useEffect(() => {
+    try { if (user) localStorage.setItem("yards_user", JSON.stringify(user)); else localStorage.removeItem("yards_user"); } catch {}
+  }, [user]);
+  useEffect(() => {
+    try { localStorage.setItem("yards_users", JSON.stringify(users)); } catch {}
+  }, [users]);
+  useEffect(() => {
+    try { localStorage.setItem("yards_user_sales", JSON.stringify(userSales)); } catch {}
+  }, [userSales]);
 
   /* ── Request geolocation ── */
   const requestLocation = useCallback(() => {
@@ -140,7 +161,7 @@ export default function YardsApp() {
       setLocErr(msg);
       const d = { lat: 42.3149, lng: -83.0364 }; // Windsor, ON default
       setLoc(d);
-      setSales(generateMockSales(d.lat, d.lng));
+      setSales([...generateMockSales(d.lat, d.lng), ...userSales]);
       setLocName("Windsor, ON");
       setLocLoading(false);
     };
@@ -151,7 +172,7 @@ export default function YardsApp() {
       async (pos) => {
         const l = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setLoc(l);
-        setSales(generateMockSales(l.lat, l.lng));
+        setSales([...generateMockSales(l.lat, l.lng), ...userSales]);
         setLocLoading(false);
         // Show coords immediately as placeholder
         setLocName(`${l.lat.toFixed(2)}, ${l.lng.toFixed(2)}`);
@@ -218,10 +239,11 @@ export default function YardsApp() {
     const newSale = {
       id: Date.now(),
       ...saleData,
-      seller: { name: user?.name || "You", rating: 5.0, sales: 0 },
+      seller: { name: user?.name || "You", rating: 5.0, sales: 0, bio: user?.bio || "", avatarColor: user?.avatarColor || "#059669" },
       saved: false,
     };
     setSales((p) => [...p, newSale]);
+    setUserSales((p) => [...p, newSale]);
     setShowCreate(false);
   };
 
@@ -372,7 +394,7 @@ export default function YardsApp() {
         </main>
 
         {/* ──── BOTTOM NAV ──── */}
-        <nav className="absolute bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-6 py-3 flex justify-around items-center z-30">
+        <nav className="absolute bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-6 py-3 flex justify-around items-center z-[60]">
           <NavBtn icon={Home} label="Browse" active={view === "browse"} onClick={() => setView("browse")} />
           <NavBtn icon={Map} label="Map" active={view === "map"} onClick={() => setView("map")} />
           <button onClick={() => user ? setShowCreate(true) : setShowAuth(true)}
@@ -839,7 +861,7 @@ function ProfileBtn({ icon: Icon, color, label, onClick }) {
 /* ══════════════════ MY SALES VIEW ══════════════════ */
 function MySalesView({ sales, onClose, onSelect }) {
   return (
-    <div className="absolute inset-0 bg-white z-50 overflow-y-auto" style={{ animation: "slideUp .3s ease-out" }}>
+    <div className="absolute inset-0 bg-white z-40 overflow-y-auto" style={{ animation: "slideUp .3s ease-out" }}>
       <div className="sticky top-0 bg-white border-b border-stone-200 px-4 py-4 flex items-center gap-4 z-10">
         <button onClick={onClose} className="p-2 hover:bg-stone-100 rounded-full"><ChevronLeft className="w-6 h-6 text-stone-600" /></button>
         <h1 className="text-xl font-bold text-stone-800">My Sales</h1>
@@ -891,7 +913,7 @@ function SaleDetail({ sale, onClose, onToggleSaved, userLocation }) {
   };
 
   return (
-    <div className="absolute inset-0 bg-white z-50 overflow-y-auto" style={{ animation: "slideUp .3s ease-out" }}>
+    <div className="absolute inset-0 bg-white z-40 overflow-y-auto" style={{ animation: "slideUp .3s ease-out" }}>
       {/* Photos */}
       <div className="relative h-72 bg-stone-200">
         <img src={sale.photos[photo]} alt="" className="w-full h-full object-cover" />
@@ -990,8 +1012,8 @@ function SaleDetail({ sale, onClose, onToggleSaved, userLocation }) {
         </button>
       </div>
 
-      {/* Sticky bottom back bar */}
-      <div className="sticky bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 flex items-center justify-between z-20">
+      {/* Sticky bottom back bar — above nav */}
+      <div className="sticky bottom-[68px] left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 flex items-center justify-between z-20">
         <button onClick={onClose} className="flex items-center gap-2 text-emerald-600 font-semibold text-sm">
           <ChevronLeft className="w-5 h-5" /> Back
         </button>
@@ -1001,6 +1023,7 @@ function SaleDetail({ sale, onClose, onToggleSaved, userLocation }) {
           {sale.saved ? "Saved" : "Save"}
         </button>
       </div>
+      <div className="h-[68px]" />
     </div>
   );
 }
@@ -1160,7 +1183,7 @@ function EditProfileModal({ user, onClose, onSave }) {
   const initials = name.split(" ").map((n) => n[0] || "").join("").toUpperCase();
 
   return (
-    <div className="absolute inset-0 bg-white z-50 overflow-y-auto" style={{ animation: "slideUp .3s ease-out" }}>
+    <div className="absolute inset-0 bg-white z-40 overflow-y-auto" style={{ animation: "slideUp .3s ease-out" }}>
       <div className="sticky top-0 bg-white border-b border-stone-200 px-4 py-4 flex items-center gap-4 z-10">
         <button onClick={onClose} className="p-2 hover:bg-stone-100 rounded-full"><ChevronLeft className="w-6 h-6 text-stone-600" /></button>
         <h1 className="text-xl font-bold text-stone-800">Edit Profile</h1>
@@ -1222,13 +1245,14 @@ function EditProfileModal({ user, onClose, onSave }) {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-stone-200">
+      <div className="sticky bottom-[68px] left-0 right-0 p-4 bg-white border-t border-stone-200">
         <button onClick={() => onSave({ name: name.trim() || user.name, bio: bio.slice(0, 150), phone, avatarColor })}
           className="w-full py-4 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transition"
           style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>
           Save Changes
         </button>
       </div>
+      <div className="h-[68px]" />
     </div>
   );
 }
@@ -1299,7 +1323,7 @@ function CreateSaleModal({ onClose, userLocation, onCreate, user }) {
   };
 
   return (
-    <div className="absolute inset-0 bg-white z-50 overflow-y-auto" style={{ animation: "slideUp .3s ease-out" }}>
+    <div className="absolute inset-0 bg-white z-40 overflow-y-auto" style={{ animation: "slideUp .3s ease-out" }}>
       <div className="sticky top-0 bg-white border-b border-stone-200 px-4 py-4 flex items-center gap-4 z-10">
         <button onClick={onClose} className="p-2 hover:bg-stone-100 rounded-full"><ChevronLeft className="w-6 h-6 text-stone-600" /></button>
         <h1 className="text-xl font-bold text-stone-800">Post a Yard Sale</h1>
@@ -1309,10 +1333,10 @@ function CreateSaleModal({ onClose, userLocation, onCreate, user }) {
         {/* Photos — real upload, max 5 */}
         <div>
           <label className="block font-medium text-stone-800 mb-1.5">Photos <span className="text-stone-400 font-normal text-xs">({form.photos.length}/5)</span></label>
-          <p className="text-stone-500 text-xs mb-2">Add up to 5 photos to attract more visitors</p>
-          <div className="flex gap-2 flex-wrap">
+          <p className="text-stone-500 text-xs mb-3">Add up to 5 photos to attract more visitors</p>
+          <div className="flex gap-2.5 flex-wrap">
             {form.photos.map((src, i) => (
-              <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-stone-200">
+              <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-stone-200 shadow-sm">
                 <img src={src} alt="" className="w-full h-full object-cover" />
                 <button onClick={() => removePhoto(i)} className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center">
                   <X className="w-3 h-3 text-white" />
@@ -1413,13 +1437,14 @@ function CreateSaleModal({ onClose, userLocation, onCreate, user }) {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-stone-200">
+      <div className="sticky bottom-[68px] left-0 right-0 p-4 bg-white border-t border-stone-200">
         <button onClick={handleSubmit}
           className="w-full py-4 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transition"
           style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>
           Post Your Sale
         </button>
       </div>
+      <div className="h-[68px]" />
     </div>
   );
 }
