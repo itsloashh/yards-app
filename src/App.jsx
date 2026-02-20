@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   MapPin, Search, Plus, User, Heart, Clock, Navigation, ChevronLeft, X,
   Camera, DollarSign, Calendar, Home, Map, LogOut, Eye, ChevronDown, Locate,
@@ -137,10 +137,10 @@ export default function YardsApp() {
 
     const fallback = (msg) => {
       setLocErr(msg);
-      const d = { lat: 49.2827, lng: -123.1207 }; // Vancouver default
+      const d = { lat: 42.3149, lng: -83.0364 }; // Windsor, ON default
       setLoc(d);
       setSales(generateMockSales(d.lat, d.lng));
-      setLocName("Vancouver, BC");
+      setLocName("Windsor, ON");
       setLocLoading(false);
     };
 
@@ -152,9 +152,15 @@ export default function YardsApp() {
         setLoc(l);
         setSales(generateMockSales(l.lat, l.lng));
         setLocLoading(false);
-        // Reverse-geocode for display
-        const geo = await reverseGeocode(l.lat, l.lng);
-        setLocName(geo.short);
+        // Show coords immediately as placeholder
+        setLocName(`${l.lat.toFixed(2)}, ${l.lng.toFixed(2)}`);
+        // Reverse-geocode for friendly name
+        try {
+          const geo = await reverseGeocode(l.lat, l.lng);
+          if (geo.short && !geo.short.includes("undefined")) setLocName(geo.short);
+        } catch {
+          // Keep coordinate display as fallback
+        }
       },
       () => fallback("Location denied. Using default."),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
@@ -222,12 +228,28 @@ export default function YardsApp() {
   return (
     <div className="min-h-screen bg-stone-200" style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Archivo+Black&display=swap" rel="stylesheet" />
+      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
       <style>{`
         @keyframes fadeUp   { from { opacity:0; transform:translateY(18px) } to { opacity:1; transform:translateY(0) } }
         @keyframes slideUp  { from { transform:translateY(100%) }           to { transform:translateY(0) } }
         @keyframes fadeIn   { from { opacity:0 }                            to { opacity:1 } }
         @keyframes pulse-ring { 0% { transform:scale(.8); opacity:.6 } 100% { transform:scale(2.2); opacity:0 } }
         @keyframes dropIn   { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }
+        @keyframes dropPin  { 0% { opacity:0; transform:translateY(-20px) scale(0.5) } 60% { transform:translateY(4px) scale(1.1) } 100% { opacity:1; transform:translateY(0) scale(1) } }
+        .leaflet-container { width:100%; height:100%; font-family: inherit; }
+        .leaflet-control-attribution { display:none !important; }
+        .leaflet-control-zoom { border:none !important; box-shadow: 0 2px 12px rgba(0,0,0,0.15) !important; border-radius: 12px !important; overflow:hidden; }
+        .leaflet-control-zoom a { width:36px !important; height:36px !important; line-height:36px !important; font-size:18px !important; color:#374151 !important; }
+        .sale-marker { background:none; border:none; }
+        .sale-marker-inner { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#059669,#84cc16); border:3px solid white; box-shadow:0 3px 12px rgba(0,0,0,0.3); cursor:pointer; transition:transform 0.15s; }
+        .sale-marker-inner:hover { transform:scale(1.2); }
+        .sale-marker-inner svg { width:20px; height:20px; color:white; }
+        .sale-marker-arrow { width:12px; height:12px; background:linear-gradient(135deg,#059669,#84cc16); transform:rotate(45deg); margin:-7px auto 0; border-right:3px solid white; border-bottom:3px solid white; }
+        .user-marker { width:20px; height:20px; background:#3b82f6; border-radius:50%; border:3px solid white; box-shadow:0 2px 8px rgba(59,130,246,0.5); }
+        .user-marker-pulse { position:absolute; inset:-8px; background:rgba(59,130,246,0.25); border-radius:50%; animation:pulse-ring 2s ease-out infinite; }
+        .leaflet-popup-content-wrapper { border-radius:16px !important; box-shadow:0 4px 20px rgba(0,0,0,0.15) !important; padding:0 !important; }
+        .leaflet-popup-content { margin:0 !important; }
+        .leaflet-popup-tip { background:white !important; }
         @keyframes dropPin  { 0% { opacity:0; transform:translate(-50%,-200%) scale(0.3) } 60% { transform:translate(-50%,-100%) scale(1.1) } 100% { opacity:1; transform:translate(-50%,-100%) scale(1) } }
       `}</style>
 
@@ -235,7 +257,7 @@ export default function YardsApp() {
       <div className="max-w-md mx-auto bg-white min-h-screen relative shadow-2xl overflow-hidden">
 
         {/* ──── HEADER ──── */}
-        <header className="relative px-4 pt-11 pb-4" style={{ background: "linear-gradient(135deg, #065f46 0%, #059669 40%, #84cc16 100%)" }}>
+        <header className="relative px-4 pt-11 pb-4 z-[1100]" style={{ background: "linear-gradient(135deg, #065f46 0%, #059669 40%, #84cc16 100%)" }}>
           {/* Subtle gradient overlay only — no circles blocking the logo */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute -bottom-8 -right-8 w-32 h-32 rounded-full bg-lime-400 opacity-[0.15]" />
@@ -488,133 +510,204 @@ function SaleCard({ sale, onClick, onToggleSaved, delay = 0 }) {
   );
 }
 
-/* ══════════════════ INTERACTIVE MAP VIEW ═════════════════
-   Pure CSS/SVG map that works without external dependencies.
-   Positions pins relative to user location with real distance scaling.
-   ═════════════════════════════════════════════════════ */
+/* ══════════════════ REAL LEAFLET MAP VIEW ══════════════════
+   Interactive OpenStreetMap with real streets, zoom, and pan.
+   Sales shown as custom pins. User location as blue pulsing dot.
+   ═══════════════════════════════════════════════════════════ */
+
+// Global Leaflet loader — shared across all map instances
+let leafletLoadPromise = null;
+function loadLeaflet() {
+  if (window.L) return Promise.resolve(window.L);
+  if (leafletLoadPromise) return leafletLoadPromise;
+  leafletLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    script.onload = () => resolve(window.L);
+    script.onerror = () => reject(new Error("Failed to load Leaflet"));
+    document.head.appendChild(script);
+  });
+  return leafletLoadPromise;
+}
+
 function LeafletMapView({ sales, onSelect, userLocation, dist }) {
-  const [hoveredId, setHoveredId] = useState(null);
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markersRef = useRef([]);
   const [selectedPin, setSelectedPin] = useState(null);
+  const [mapReady, setMapReady] = useState(false);
+  const [mapError, setMapError] = useState(false);
 
-  const getScale = () => {
-    if (dist <= 2) return 2.5;
-    if (dist <= 5) return 1.2;
-    if (dist <= 10) return 0.65;
-    if (dist <= 25) return 0.3;
-    return 0.15;
-  };
-  const scale = getScale();
+  // Load Leaflet and initialize map
+  useEffect(() => {
+    if (!mapRef.current) return;
+    let cancelled = false;
 
-  const getPinPos = (sale) => {
-    if (!userLocation) return { left: 50, top: 50 };
-    const latDiff = (sale.coords.lat - userLocation.lat) * 1000 * scale;
-    const lngDiff = (sale.coords.lng - userLocation.lng) * 1000 * scale;
-    return {
-      left: Math.max(8, Math.min(92, 50 + lngDiff * 2.8)),
-      top: Math.max(10, Math.min(80, 50 - latDiff * 2.8)),
+    loadLeaflet().then((L) => {
+      if (cancelled || !mapRef.current || mapInstanceRef.current) return;
+
+      const center = userLocation ? [userLocation.lat, userLocation.lng] : [42.3149, -83.0364];
+      const zoom = dist <= 2 ? 15 : dist <= 5 ? 14 : dist <= 10 ? 13 : dist <= 25 ? 12 : 11;
+
+      const map = L.map(mapRef.current, {
+        center,
+        zoom,
+        zoomControl: true,
+        attributionControl: false,
+      });
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+      }).addTo(map);
+
+      // User location marker
+      if (userLocation) {
+        const userIcon = L.divIcon({
+          className: "user-marker-container",
+          html: `<div style="position:relative"><div class="user-marker"></div><div class="user-marker-pulse"></div></div>`,
+          iconSize: [20, 20],
+          iconAnchor: [10, 10],
+        });
+        L.marker([userLocation.lat, userLocation.lng], { icon: userIcon, interactive: false }).addTo(map);
+
+        // Radius circle
+        const radiusMeters = dist * 1609.34;
+        L.circle([userLocation.lat, userLocation.lng], {
+          radius: radiusMeters,
+          color: "#059669",
+          weight: 2,
+          opacity: 0.3,
+          fillColor: "#059669",
+          fillOpacity: 0.04,
+          dashArray: "8, 6",
+        }).addTo(map);
+      }
+
+      mapInstanceRef.current = map;
+      setMapReady(true);
+
+      // Fix map size after render
+      setTimeout(() => map.invalidateSize(), 100);
+    }).catch(() => {
+      if (!cancelled) setMapError(true);
+    });
+
+    return () => {
+      cancelled = true;
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        setMapReady(false);
+      }
     };
-  };
+  }, [userLocation]);
+
+  // Update zoom when distance changes
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    const zoom = dist <= 2 ? 15 : dist <= 5 ? 14 : dist <= 10 ? 13 : dist <= 25 ? 12 : 11;
+    mapInstanceRef.current.setZoom(zoom);
+  }, [dist]);
+
+  // Add sale markers
+  useEffect(() => {
+    if (!mapInstanceRef.current || !mapReady || !window.L) return;
+    const L = window.L;
+    const map = mapInstanceRef.current;
+
+    // Clear old markers
+    markersRef.current.forEach((m) => map.removeLayer(m));
+    markersRef.current = [];
+
+    sales.forEach((sale, i) => {
+      const saleIcon = L.divIcon({
+        className: "sale-marker",
+        html: `<div style="animation:dropPin 0.4s ease-out ${i * 0.06}s both">
+          <div class="sale-marker-inner">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23"></line>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+          </div>
+          <div class="sale-marker-arrow"></div>
+        </div>`,
+        iconSize: [40, 52],
+        iconAnchor: [20, 52],
+        popupAnchor: [0, -52],
+      });
+
+      const marker = L.marker([sale.coords.lat, sale.coords.lng], { icon: saleIcon });
+
+      const popupContent = `
+        <div style="padding:12px;min-width:180px;font-family:'DM Sans',sans-serif;">
+          <div style="font-weight:700;font-size:13px;color:#1c1917;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;">${sale.title}</div>
+          ${sale.address ? `<div style="font-size:11px;color:#059669;margin-bottom:2px;">📍 ${sale.address}</div>` : ""}
+          <div style="font-size:11px;color:#059669;font-weight:600;">${sale.distanceText} · ${sale.date}</div>
+          <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">
+            ${sale.tags.slice(0, 3).map((t) => `<span style="padding:2px 8px;background:#f5f5f4;border-radius:99px;font-size:10px;color:#57534e;">${t}</span>`).join("")}
+          </div>
+        </div>
+      `;
+
+      marker.bindPopup(popupContent, { closeButton: false, offset: [0, 0] });
+      marker.on("click", () => setSelectedPin(sale.id));
+      marker.addTo(map);
+      markersRef.current.push(marker);
+    });
+  }, [sales, mapReady]);
 
   return (
     <div className="relative h-full" style={{ minHeight: 500 }}>
-      {/* Map background with grid pattern */}
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 via-green-50 to-lime-50">
-        {/* Street grid */}
-        <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
-              <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#d1d5db" strokeWidth="0.5" opacity="0.5" />
-            </pattern>
-            <pattern id="blocks" width="200" height="200" patternUnits="userSpaceOnUse">
-              <rect x="10" y="10" width="80" height="80" rx="4" fill="#e5e7eb" opacity="0.25" />
-              <rect x="110" y="10" width="80" height="80" rx="4" fill="#d1fae5" opacity="0.2" />
-              <rect x="10" y="110" width="80" height="80" rx="4" fill="#d1fae5" opacity="0.15" />
-              <rect x="110" y="110" width="80" height="80" rx="4" fill="#e5e7eb" opacity="0.2" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#blocks)" />
-          <rect width="100%" height="100%" fill="url(#grid)" />
-          {/* Main roads */}
-          <line x1="0" y1="25%" x2="100%" y2="25%" stroke="#d1d5db" strokeWidth="3" opacity="0.4" />
-          <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#d1d5db" strokeWidth="4" opacity="0.5" />
-          <line x1="0" y1="75%" x2="100%" y2="75%" stroke="#d1d5db" strokeWidth="3" opacity="0.4" />
-          <line x1="25%" y1="0" x2="25%" y2="100%" stroke="#d1d5db" strokeWidth="3" opacity="0.4" />
-          <line x1="50%" y1="0" x2="50%" y2="100%" stroke="#d1d5db" strokeWidth="4" opacity="0.5" />
-          <line x1="75%" y1="0" x2="75%" y2="100%" stroke="#d1d5db" strokeWidth="3" opacity="0.4" />
-          {/* Diagonal road */}
-          <line x1="10%" y1="90%" x2="90%" y2="10%" stroke="#d1d5db" strokeWidth="2.5" opacity="0.3" />
-        </svg>
+      {/* Map container */}
+      <div ref={mapRef} className="absolute inset-0 z-0" />
 
-        {/* Distance ring */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-          style={{
-            width: `${Math.min(88, dist * 5 + 30)}%`,
-            aspectRatio: "1",
-            border: "2px dashed rgba(5,150,105,0.35)",
-            borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(5,150,105,0.04) 0%, rgba(5,150,105,0.08) 100%)",
-          }} />
-
-        {/* Sale pins */}
-        {sales.map((sale, i) => {
-          const pos = getPinPos(sale);
-          const isHovered = hoveredId === sale.id;
-          const isSelected = selectedPin === sale.id;
-          return (
-            <button key={sale.id}
-              onClick={() => { setSelectedPin(sale.id === selectedPin ? null : sale.id); }}
-              onMouseEnter={() => setHoveredId(sale.id)}
-              onMouseLeave={() => setHoveredId(null)}
-              className="absolute z-10 group"
-              style={{
-                left: `${pos.left}%`, top: `${pos.top}%`,
-                transform: "translate(-50%, -100%)",
-                animation: `dropPin 0.4s ease-out ${i * 0.08}s both`,
-              }}>
-              {/* Tooltip */}
-              {(isHovered || isSelected) && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-white rounded-xl shadow-xl border border-stone-100 whitespace-nowrap z-20"
-                  style={{ animation: "dropIn .15s ease-out" }}>
-                  <p className="text-xs font-bold text-stone-800 max-w-[180px] truncate">{sale.title}</p>
-                  <p className="text-[11px] text-emerald-600 font-semibold">{sale.distanceText}</p>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-white border-r border-b border-stone-100 rotate-45 -mt-[5px]" />
-                </div>
-              )}
-              {/* Pin body */}
-              <div className={`relative transition-transform duration-150 ${isHovered || isSelected ? "scale-125" : "scale-100"}`}>
-                <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg border-2 border-white"
-                  style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>
-                  <DollarSign className="w-5 h-5 text-white" />
-                </div>
-                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 border-r-2 border-b-2 border-white"
-                  style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }} />
-              </div>
-            </button>
-          );
-        })}
-
-        {/* User location dot */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
-          <div className="relative">
-            <div className="w-5 h-5 bg-blue-500 rounded-full border-[3px] border-white shadow-lg" />
-            <div className="absolute inset-[-4px] bg-blue-400/30 rounded-full" style={{ animation: "pulse-ring 2s ease-out infinite" }} />
+      {!mapReady && !mapError && (
+        <div className="absolute inset-0 bg-emerald-50 flex items-center justify-center z-10">
+          <div className="text-center">
+            <RefreshCw className="w-8 h-8 text-emerald-500 animate-spin mx-auto mb-2" />
+            <p className="text-emerald-700 font-medium text-sm">Loading map…</p>
           </div>
+        </div>
+      )}
+
+      {mapError && (
+        <div className="absolute inset-0 bg-stone-50 flex items-center justify-center z-10">
+          <div className="text-center p-6">
+            <AlertCircle className="w-10 h-10 text-stone-400 mx-auto mb-3" />
+            <p className="text-stone-600 font-medium">Map couldn't load</p>
+            <p className="text-stone-400 text-sm mt-1">Check your internet connection</p>
+          </div>
+        </div>
+      )}
+
+      {/* Floating info overlays */}
+      <div className="absolute top-3 left-3 bg-white/95 backdrop-blur rounded-xl px-3 py-2 shadow-lg z-[1000]">
+        <p className="text-[11px] text-stone-500 font-medium">Showing</p>
+        <p className="text-sm font-bold text-emerald-600">{sales.length} sale{sales.length !== 1 ? "s" : ""} nearby</p>
+      </div>
+      <div className="absolute top-3 right-3 bg-white/95 backdrop-blur rounded-xl p-2.5 shadow-lg z-[1000] space-y-1.5">
+        <div className="flex items-center gap-1.5 text-[11px] text-stone-600">
+          <div className="w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow" />You
+        </div>
+        <div className="flex items-center gap-1.5 text-[11px] text-stone-600">
+          <div className="w-3 h-3 rounded-full" style={{ background: "linear-gradient(135deg,#059669,#84cc16)" }} />Sale
         </div>
       </div>
 
-      {/* Selected pin bottom sheet */}
+      {/* Selected sale bottom sheet */}
       {selectedPin && (() => {
         const sale = sales.find((s) => s.id === selectedPin);
         if (!sale) return null;
         return (
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-30 p-4"
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-[1000] p-4"
             style={{ animation: "slideUp .25s ease-out" }}>
             <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-3" />
-            <div className="flex gap-3 items-start" onClick={() => { onSelect(sale); setSelectedPin(null); }}>
+            <div className="flex gap-3 items-start cursor-pointer" onClick={() => { onSelect(sale); setSelectedPin(null); }}>
               <img src={sale.photos[0]} alt="" className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-stone-800 text-sm truncate">{sale.title}</h3>
-                <p className="text-emerald-600 text-xs font-semibold mt-0.5">{sale.distanceText} · {sale.date}</p>
+                {sale.address && <p className="text-emerald-600 text-xs font-medium mt-0.5">📍 {sale.address}</p>}
+                <p className="text-stone-500 text-xs mt-0.5">{sale.distanceText} · {sale.date}</p>
                 <div className="flex gap-1 mt-1.5">
                   {sale.tags.slice(0, 2).map((t) => (
                     <span key={t} className="px-2 py-0.5 bg-stone-100 text-stone-500 text-[10px] font-medium rounded-full">{t}</span>
@@ -623,23 +716,12 @@ function LeafletMapView({ sales, onSelect, userLocation, dist }) {
               </div>
               <ChevronLeft className="w-5 h-5 text-stone-400 rotate-180 flex-shrink-0 mt-1" />
             </div>
+            <button onClick={() => setSelectedPin(null)} className="absolute top-3 right-3 p-1 hover:bg-stone-100 rounded-full">
+              <X className="w-4 h-4 text-stone-400" />
+            </button>
           </div>
         );
       })()}
-
-      {/* Floating overlays */}
-      <div className="absolute top-3 left-3 bg-white/95 backdrop-blur rounded-xl px-3 py-2 shadow-lg z-20">
-        <p className="text-[11px] text-stone-500 font-medium">Showing</p>
-        <p className="text-sm font-bold text-emerald-600">{sales.length} sale{sales.length !== 1 ? "s" : ""} · {dist} mi</p>
-      </div>
-      <div className="absolute top-3 right-3 bg-white/95 backdrop-blur rounded-xl p-2.5 shadow-lg z-20 space-y-1.5">
-        <div className="flex items-center gap-1.5 text-[11px] text-stone-600">
-          <div className="w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow" />You
-        </div>
-        <div className="flex items-center gap-1.5 text-[11px] text-stone-600">
-          <div className="w-3 h-3 rounded-full" style={{ background: "linear-gradient(135deg,#059669,#84cc16)" }} />Sale
-        </div>
-      </div>
     </div>
   );
 }
@@ -827,34 +909,10 @@ function SaleDetail({ sale, onClose, onToggleSaved, userLocation }) {
           )}
         </div>
 
-        {/* Mini map — CSS-based, no external dependencies */}
+        {/* Mini map — Real Leaflet map */}
         <div>
           <h2 className="font-bold text-stone-800 mb-2">Location</h2>
-          <div className="h-36 rounded-xl overflow-hidden shadow-inner relative bg-gradient-to-br from-emerald-50 to-green-50">
-            <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <pattern id="miniGrid" width="30" height="30" patternUnits="userSpaceOnUse">
-                  <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#d1d5db" strokeWidth="0.5" opacity="0.5" />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#miniGrid)" />
-              <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#d1d5db" strokeWidth="2.5" opacity="0.4" />
-              <line x1="50%" y1="0" x2="50%" y2="100%" stroke="#d1d5db" strokeWidth="2.5" opacity="0.4" />
-              <line x1="0" y1="25%" x2="100%" y2="25%" stroke="#d1d5db" strokeWidth="1" opacity="0.3" />
-              <line x1="0" y1="75%" x2="100%" y2="75%" stroke="#d1d5db" strokeWidth="1" opacity="0.3" />
-              <line x1="25%" y1="0" x2="25%" y2="100%" stroke="#d1d5db" strokeWidth="1" opacity="0.3" />
-              <line x1="75%" y1="0" x2="75%" y2="100%" stroke="#d1d5db" strokeWidth="1" opacity="0.3" />
-            </svg>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full">
-              <div className="w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white"
-                style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>
-                <MapPin className="w-4 h-4 text-white" />
-              </div>
-            </div>
-            <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur rounded-lg px-2 py-1 text-[10px] text-stone-600 font-medium">
-              {sale.coords.lat.toFixed(4)}, {sale.coords.lng.toFixed(4)}
-            </div>
-          </div>
+          <MiniMap lat={sale.coords.lat} lng={sale.coords.lng} address={sale.address} />
         </div>
 
         <button onClick={openDirections}
@@ -863,6 +921,56 @@ function SaleDetail({ sale, onClose, onToggleSaved, userLocation }) {
           <Navigation className="w-5 h-5" /> Get Directions
         </button>
       </div>
+    </div>
+  );
+}
+
+/* ══════════════════ MINI MAP ══════════════════ */
+function MiniMap({ lat, lng, address }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!window.L || !ref.current) {
+      // Try again after Leaflet loads
+      const check = setInterval(() => {
+        if (window.L && ref.current) {
+          clearInterval(check);
+          init();
+        }
+      }, 200);
+      return () => clearInterval(check);
+    }
+    init();
+    function init() {
+      const L = window.L;
+      const map = L.map(ref.current, {
+        center: [lat, lng],
+        zoom: 16,
+        zoomControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        attributionControl: false,
+      });
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+      const icon = L.divIcon({
+        className: "sale-marker",
+        html: `<div class="sale-marker-inner"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div><div class="sale-marker-arrow"></div>`,
+        iconSize: [40, 52],
+        iconAnchor: [20, 52],
+      });
+      L.marker([lat, lng], { icon }).addTo(map);
+      return () => map.remove();
+    }
+  }, [lat, lng]);
+
+  return (
+    <div className="relative h-40 rounded-xl overflow-hidden shadow-inner">
+      <div ref={ref} className="absolute inset-0" />
+      {address && (
+        <div className="absolute bottom-2 left-2 bg-white/95 backdrop-blur rounded-lg px-2.5 py-1.5 text-[11px] text-stone-700 font-medium shadow z-[1000]">
+          📍 {address}
+        </div>
+      )}
     </div>
   );
 }
