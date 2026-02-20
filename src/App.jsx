@@ -118,6 +118,7 @@ export default function YardsApp() {
   const [catFilter, setCatFilter] = useState(null); // null = all, or a category string
   const [showCatFilter, setShowCatFilter] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showMySales, setShowMySales] = useState(false);
 
   // Location
   const [loc, setLoc] = useState(null);
@@ -266,8 +267,10 @@ export default function YardsApp() {
           <div className="relative z-10">
             {/* Title row */}
             <div className="flex items-center justify-between mb-3">
-              {/* Original wooden sign logo */}
-              <LogoImage />
+              {/* Original wooden sign logo — clickable to go home */}
+              <button onClick={() => { setView("browse"); setSelectedSale(null); }} className="focus:outline-none">
+                <LogoImage />
+              </button>
 
               <div className="flex items-center gap-2">
                 {/* Location chip */}
@@ -365,7 +368,7 @@ export default function YardsApp() {
           {view === "browse" && <BrowseView sales={filtered} onSelect={setSelectedSale} onToggleSaved={toggleSaved} dist={dist} unit={unit} loading={locLoading} catFilter={catFilter} onClearCat={() => setCatFilter(null)} />}
           {view === "map" && <LeafletMapView sales={filtered} onSelect={setSelectedSale} userLocation={loc} dist={dist} />}
           {view === "saved" && <SavedView sales={withDist.filter((s) => s.saved)} onSelect={setSelectedSale} onToggleSaved={toggleSaved} />}
-          {view === "profile" && <ProfileView user={user} onLogout={handleLogout} onCreateSale={() => setShowCreate(true)} onLogin={() => setShowAuth(true)} onEditProfile={() => setShowEditProfile(true)} unit={unit} onToggleUnit={() => setUnit(unit === "mi" ? "km" : "mi")} />}
+          {view === "profile" && <ProfileView user={user} onLogout={handleLogout} onCreateSale={() => setShowCreate(true)} onLogin={() => setShowAuth(true)} onEditProfile={() => setShowEditProfile(true)} onViewMySales={() => setShowMySales(true)} unit={unit} onToggleUnit={() => setUnit(unit === "mi" ? "km" : "mi")} />}
         </main>
 
         {/* ──── BOTTOM NAV ──── */}
@@ -384,8 +387,9 @@ export default function YardsApp() {
         {/* ──── MODALS ──── */}
         {selectedSale && <SaleDetail sale={selectedSale} onClose={() => setSelectedSale(null)} onToggleSaved={toggleSaved} userLocation={loc} />}
         {showAuth && <AuthModal mode={authMode} onModeChange={setAuthMode} onClose={() => setShowAuth(false)} onSignUp={handleSignUp} onLogin={handleLogin} users={users} />}
-        {showCreate && <CreateSaleModal onClose={() => setShowCreate(false)} userLocation={loc} onCreate={handleCreateSale} />}
+        {showCreate && <CreateSaleModal onClose={() => setShowCreate(false)} userLocation={loc} onCreate={handleCreateSale} user={user} />}
         {showEditProfile && user && <EditProfileModal user={user} onClose={() => setShowEditProfile(false)} onSave={handleUpdateProfile} />}
+        {showMySales !== undefined && showMySales && <MySalesView sales={withDist.filter((s) => s.seller?.name === user?.name)} onClose={() => setShowMySales(false)} onSelect={(s) => { setSelectedSale(s); setShowMySales(false); }} />}
       </div>
     </div>
   );
@@ -748,7 +752,7 @@ function SavedView({ sales, onSelect, onToggleSaved }) {
 }
 
 /* ══════════════════ PROFILE VIEW ══════════════════ */
-function ProfileView({ user, onLogout, onCreateSale, onLogin, onEditProfile, unit, onToggleUnit }) {
+function ProfileView({ user, onLogout, onCreateSale, onLogin, onEditProfile, onViewMySales, unit, onToggleUnit }) {
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
@@ -813,7 +817,7 @@ function ProfileView({ user, onLogout, onCreateSale, onLogin, onEditProfile, uni
       <div className="space-y-3">
         <ProfileBtn icon={UserCircle} color="emerald" label="Edit Profile" onClick={onEditProfile} />
         <ProfileBtn icon={Plus} color="emerald" label="Post a Yard Sale" onClick={onCreateSale} />
-        <ProfileBtn icon={Eye} color="stone" label="My Sales" />
+        <ProfileBtn icon={Eye} color="stone" label="My Sales" onClick={onViewMySales} />
         <ProfileBtn icon={LogOut} color="rose" label="Sign Out" onClick={onLogout} />
       </div>
     </div>
@@ -829,6 +833,50 @@ function ProfileBtn({ icon: Icon, color, label, onClick }) {
       <div className={`w-10 h-10 ${bg} rounded-full flex items-center justify-center`}><Icon className={`w-5 h-5 ${fg}`} /></div>
       <span className="font-medium text-stone-800">{label}</span>
     </button>
+  );
+}
+
+/* ══════════════════ MY SALES VIEW ══════════════════ */
+function MySalesView({ sales, onClose, onSelect }) {
+  return (
+    <div className="absolute inset-0 bg-white z-50 overflow-y-auto" style={{ animation: "slideUp .3s ease-out" }}>
+      <div className="sticky top-0 bg-white border-b border-stone-200 px-4 py-4 flex items-center gap-4 z-10">
+        <button onClick={onClose} className="p-2 hover:bg-stone-100 rounded-full"><ChevronLeft className="w-6 h-6 text-stone-600" /></button>
+        <h1 className="text-xl font-bold text-stone-800">My Sales</h1>
+      </div>
+      {!sales.length ? (
+        <div className="flex flex-col items-center justify-center p-12 text-center" style={{ minHeight: "60vh" }}>
+          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+            <Tag className="w-10 h-10 text-emerald-400" />
+          </div>
+          <h3 className="text-lg font-bold text-stone-800 mb-2">No Sales Yet</h3>
+          <p className="text-stone-500 text-sm mb-1">You haven't posted any yard sales yet.</p>
+          <p className="text-stone-400 text-xs">Tap the <span className="text-emerald-600 font-semibold">+</span> button to create your first one!</p>
+        </div>
+      ) : (
+        <div className="p-4 space-y-3">
+          {sales.map((s, i) => (
+            <div key={s.id} onClick={() => onSelect(s)}
+              className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition-all cursor-pointer border border-stone-100"
+              style={{ animation: `fadeUp .4s ease-out ${i * 0.05}s both` }}>
+              <div className="flex gap-3 p-3">
+                <img src={s.photos?.[0] || ""} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-stone-800 text-sm truncate">{s.title}</h3>
+                  {s.address && <p className="text-emerald-600 text-xs mt-0.5">📍 {s.address}</p>}
+                  <p className="text-stone-500 text-xs mt-0.5">{s.date}</p>
+                  <div className="flex gap-1 mt-1.5">
+                    {s.tags?.slice(0, 2).map((t) => (
+                      <span key={t} className="px-2 py-0.5 bg-stone-100 text-stone-500 text-[10px] font-medium rounded-full">{t}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -915,10 +963,42 @@ function SaleDetail({ sale, onClose, onToggleSaved, userLocation }) {
           <MiniMap lat={sale.coords.lat} lng={sale.coords.lng} address={sale.address} />
         </div>
 
+        {/* Featured / High-Value Items */}
+        {sale.featuredItems && sale.featuredItems.length > 0 && (
+          <div>
+            <h2 className="font-bold text-stone-800 mb-2">Featured Items</h2>
+            <div className="space-y-2">
+              {sale.featuredItems.map((item, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Star className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-stone-800 text-sm">{item.name}</p>
+                    {item.price && <p className="text-amber-600 text-xs font-medium">${item.price}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <button onClick={openDirections}
           className="w-full py-4 text-white font-bold rounded-2xl flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition"
           style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>
           <Navigation className="w-5 h-5" /> Get Directions
+        </button>
+      </div>
+
+      {/* Sticky bottom back bar */}
+      <div className="sticky bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 flex items-center justify-between z-20">
+        <button onClick={onClose} className="flex items-center gap-2 text-emerald-600 font-semibold text-sm">
+          <ChevronLeft className="w-5 h-5" /> Back
+        </button>
+        <button onClick={() => onToggleSaved(sale.id)}
+          className="flex items-center gap-1.5 text-sm font-medium text-stone-600">
+          <Heart className={`w-5 h-5 ${sale.saved ? "fill-rose-500 text-rose-500" : ""}`} />
+          {sale.saved ? "Saved" : "Save"}
         </button>
       </div>
     </div>
@@ -1154,12 +1234,47 @@ function EditProfileModal({ user, onClose, onSave }) {
 }
 
 /* ══════════════════ CREATE SALE MODAL ══════════════════ */
-function CreateSaleModal({ onClose, userLocation, onCreate }) {
+function CreateSaleModal({ onClose, userLocation, onCreate, user }) {
   const [form, setForm] = useState({ title: "", description: "", address: "", date: "", startTime: "", endTime: "", categories: [], photos: [] });
   const [geoLoading, setGeoLoading] = useState(false);
+  const [featuredItems, setFeaturedItems] = useState([]);
+  const [showFeatured, setShowFeatured] = useState(false);
+  const [newItem, setNewItem] = useState({ name: "", price: "" });
+  const fileInputRef = useRef(null);
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
   const toggleCat = (c) => set("categories", form.categories.includes(c) ? form.categories.filter((x) => x !== c) : [...form.categories, c]);
+
+  const handlePhotos = (e) => {
+    const files = Array.from(e.target.files || []);
+    const remaining = 5 - form.photos.length;
+    if (remaining <= 0) return;
+    const toAdd = files.slice(0, remaining);
+    toAdd.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setForm((prev) => {
+          if (prev.photos.length >= 5) return prev;
+          return { ...prev, photos: [...prev.photos, ev.target.result] };
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removePhoto = (idx) => {
+    set("photos", form.photos.filter((_, i) => i !== idx));
+  };
+
+  const addFeaturedItem = () => {
+    if (!newItem.name.trim()) return;
+    setFeaturedItems((p) => [...p, { name: newItem.name.trim(), price: newItem.price.trim() }]);
+    setNewItem({ name: "", price: "" });
+  };
+
+  const removeFeaturedItem = (idx) => {
+    setFeaturedItems((p) => p.filter((_, i) => i !== idx));
+  };
 
   const useMyLocation = async () => {
     if (!userLocation) return;
@@ -1176,9 +1291,10 @@ function CreateSaleModal({ onClose, userLocation, onCreate }) {
       description: form.description,
       address: form.address,
       date: form.date ? new Date(form.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) + (form.startTime ? `, ${form.startTime}` : "") + (form.endTime ? ` – ${form.endTime}` : "") : "TBD",
-      photos: [SALE_PHOTOS[Math.floor(Math.random() * SALE_PHOTOS.length)]],
+      photos: form.photos.length ? form.photos : [SALE_PHOTOS[Math.floor(Math.random() * SALE_PHOTOS.length)]],
       tags: form.categories.length ? form.categories : ["General"],
-      coords: userLocation || { lat: 49.2827, lng: -123.1207 },
+      coords: userLocation || { lat: 42.3149, lng: -83.0364 },
+      featuredItems: featuredItems.length ? featuredItems : undefined,
     });
   };
 
@@ -1190,13 +1306,27 @@ function CreateSaleModal({ onClose, userLocation, onCreate }) {
       </div>
 
       <div className="p-5 space-y-5 pb-32">
-        {/* Photos */}
+        {/* Photos — real upload, max 5 */}
         <div>
-          <label className="block font-medium text-stone-800 mb-1.5">Photos</label>
-          <p className="text-stone-500 text-xs mb-2">Add photos to attract more visitors</p>
-          <button className="w-24 h-24 border-2 border-dashed border-stone-300 rounded-xl flex flex-col items-center justify-center text-stone-400 hover:border-emerald-500 hover:text-emerald-500 transition">
-            <Camera className="w-6 h-6 mb-1" /><span className="text-[11px]">Add Photo</span>
-          </button>
+          <label className="block font-medium text-stone-800 mb-1.5">Photos <span className="text-stone-400 font-normal text-xs">({form.photos.length}/5)</span></label>
+          <p className="text-stone-500 text-xs mb-2">Add up to 5 photos to attract more visitors</p>
+          <div className="flex gap-2 flex-wrap">
+            {form.photos.map((src, i) => (
+              <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-stone-200">
+                <img src={src} alt="" className="w-full h-full object-cover" />
+                <button onClick={() => removePhoto(i)} className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center">
+                  <X className="w-3 h-3 text-white" />
+                </button>
+              </div>
+            ))}
+            {form.photos.length < 5 && (
+              <button onClick={() => fileInputRef.current?.click()}
+                className="w-20 h-20 border-2 border-dashed border-stone-300 rounded-xl flex flex-col items-center justify-center text-stone-400 hover:border-emerald-500 hover:text-emerald-500 transition">
+                <Camera className="w-5 h-5 mb-0.5" /><span className="text-[10px]">Add</span>
+              </button>
+            )}
+          </div>
+          <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotos} />
         </div>
 
         <Field label="Title *" placeholder="e.g., Moving Sale — Everything Must Go!" value={form.title} onChange={(v) => set("title", v)} />
@@ -1249,6 +1379,37 @@ function CreateSaleModal({ onClose, userLocation, onCreate }) {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Featured / High-Value Items (optional) */}
+        <div>
+          <button onClick={() => setShowFeatured(!showFeatured)}
+            className="flex items-center gap-2 text-stone-800 font-medium">
+            <Star className="w-4 h-4 text-amber-500" />
+            Featured Items <span className="text-stone-400 text-xs font-normal">(optional — great for estate sales)</span>
+            <ChevronDown className={`w-4 h-4 text-stone-400 transition-transform ${showFeatured ? "rotate-180" : ""}`} />
+          </button>
+          {showFeatured && (
+            <div className="mt-3 space-y-3 p-3 bg-amber-50 rounded-xl border border-amber-200">
+              <p className="text-xs text-amber-700">List any high-value or notable items to attract more buyers</p>
+              {featuredItems.map((item, i) => (
+                <div key={i} className="flex items-center gap-2 bg-white rounded-lg p-2 border border-amber-100">
+                  <Star className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                  <span className="flex-1 text-sm font-medium text-stone-800 truncate">{item.name}</span>
+                  {item.price && <span className="text-amber-600 text-xs font-semibold">${item.price}</span>}
+                  <button onClick={() => removeFeaturedItem(i)} className="text-stone-400 hover:text-rose-500"><X className="w-4 h-4" /></button>
+                </div>
+              ))}
+              <div className="flex gap-2">
+                <input type="text" placeholder="Item name" value={newItem.name} onChange={(e) => setNewItem((p) => ({ ...p, name: e.target.value }))}
+                  className="flex-1 px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                <input type="text" placeholder="Price" value={newItem.price} onChange={(e) => setNewItem((p) => ({ ...p, price: e.target.value }))}
+                  className="w-20 px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                <button onClick={addFeaturedItem}
+                  className="px-3 py-2 bg-amber-500 text-white rounded-lg text-sm font-bold hover:bg-amber-600 transition">+</button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
