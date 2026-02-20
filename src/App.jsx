@@ -1113,7 +1113,7 @@ function AuthModal({ mode, onModeChange, onClose, onSignUp, onLogin, users: exis
   const reset = () => { setErrs({}); setLoginErr(""); setName(""); setEmail(""); setPw(""); setPw2(""); onModeChange(mode === "login" ? "signup" : "login"); };
 
   return (
-    <div className="absolute inset-0 bg-black/50 z-50 flex items-end" style={{ animation: "fadeIn .2s ease-out" }}>
+    <div className="absolute inset-0 bg-black/50 z-[70] flex items-end" style={{ animation: "fadeIn .2s ease-out" }}>
       <div className="bg-white w-full rounded-t-3xl p-6 max-h-[90vh] overflow-y-auto" style={{ animation: "slideUp .3s ease-out" }}>
         <div className="flex items-center justify-between mb-5">
           <div>
