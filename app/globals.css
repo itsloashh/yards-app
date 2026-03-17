@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --yard-600: #059669;
+  --yard-800: #065f46;
+  --lime-400: #84cc16;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+/* Safe area for iOS notch */
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-top { padding-top: env(safe-area-inset-top); }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* Leaflet overrides */
+.leaflet-container { width: 100%; height: 100%; font-family: inherit; }
+.leaflet-control-attribution { display: none !important; }
+.leaflet-control-zoom { border: none !important; box-shadow: 0 2px 12px rgba(0,0,0,0.15) !important; border-radius: 12px !important; overflow: hidden; }
+.leaflet-control-zoom a { width: 36px !important; height: 36px !important; line-height: 36px !important; font-size: 18px !important; color: #374151 !important; }
+.leaflet-popup-content-wrapper { border-radius: 16px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important; padding: 0 !important; }
+.leaflet-popup-content { margin: 0 !important; }
+.leaflet-popup-tip { background: white !important; }
+
+.sale-marker { background: none; border: none; }
+.sale-marker-inner {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #059669, #84cc16);
+  border: 3px solid white; box-shadow: 0 3px 12px rgba(0,0,0,0.3);
+  cursor: pointer; transition: transform 0.15s;
+}
+.sale-marker-inner:hover { transform: scale(1.2); }
+.sale-marker-inner svg { width: 20px; height: 20px; color: white; }
+.sale-marker-arrow {
+  width: 12px; height: 12px;
+  background: linear-gradient(135deg, #059669, #84cc16);
+  transform: rotate(45deg); margin: -7px auto 0;
+  border-right: 3px solid white; border-bottom: 3px solid white;
+}
+.user-marker {
+  width: 20px; height: 20px; background: #3b82f6;
+  border-radius: 50%; border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.5);
+}
+.user-marker-pulse {
+  position: absolute; inset: -8px;
+  background: rgba(59,130,246,0.25);
+  border-radius: 50%;
+  animation: pulseRing 2s ease-out infinite;
+}
+
+@keyframes pulseRing {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Hide scrollbar but keep scroll */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
