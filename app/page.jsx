@@ -2,10 +2,9 @@
 import { useApp } from "@/lib/AppContext";
 import { haversine, fmtDist, distLabel } from "@/lib/distance";
 import SaleCard from "@/components/SaleCard";
-import { ArrowUpDown } from "lucide-react";
 
 export default function HomePage() {
-  const { sales, loc, dist, unit, sortBy, setSortBy } = useApp();
+  const { sales, loc, dist, unit, sortBy, setSortBy, authLoading } = useApp();
 
   const useKm = unit === "km";
   const withDist = sales.map(s => {
@@ -17,10 +16,25 @@ export default function HomePage() {
   const distInUnit = useKm ? dist * 1.60934 : dist;
   let filtered = withDist.filter(s => s.distance <= distInUnit);
 
-  // Sort
   if (sortBy === "newest") filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   else if (sortBy === "ending") filtered.sort((a, b) => (a.expiresAt || Infinity) - (b.expiresAt || Infinity));
   else filtered.sort((a, b) => a.distance - b.distance);
+
+  if (authLoading) {
+    return (
+      <div className="p-4 space-y-4">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="bg-white rounded-2xl shadow border border-stone-100 overflow-hidden">
+            <div className="h-44 bg-stone-200 animate-pulse" />
+            <div className="p-4 space-y-3">
+              <div className="h-5 w-3/4 bg-stone-200 rounded animate-pulse" />
+              <div className="h-4 w-1/2 bg-stone-200 rounded animate-pulse" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   if (!filtered.length) {
     return (
@@ -28,12 +42,20 @@ export default function HomePage() {
         <div className="w-24 h-24 bg-gradient-to-br from-emerald-100 to-lime-100 rounded-full flex items-center justify-center mb-5">
           <span className="text-4xl">🏷️</span>
         </div>
-        <h3 className="text-xl font-bold text-stone-800 mb-2 font-display">No Sales Nearby Yet</h3>
-        <p className="text-stone-500 text-sm mb-1 max-w-[260px]">Be the first to post a yard sale in your area!</p>
+        <h3 className="text-xl font-bold text-stone-800 mb-2 font-display">
+          {sales.length === 0 ? "No Sales Posted Yet" : "No Sales Nearby"}
+        </h3>
+        <p className="text-stone-500 text-sm mb-1 max-w-[260px]">
+          {sales.length === 0
+            ? "Be the first to post a yard sale in your area!"
+            : "Try expanding your distance filter or check back later."}
+        </p>
         <p className="text-stone-400 text-xs">Tap the <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-white text-[10px] font-bold" style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>+</span> button below to get started.</p>
-        <div className="mt-6 px-4 py-2 bg-stone-50 rounded-xl text-xs text-stone-500">
-          Or try expanding your distance filter above ↑
-        </div>
+        {sales.length > 0 && (
+          <div className="mt-6 px-4 py-2 bg-stone-50 rounded-xl text-xs text-stone-500">
+            {sales.length} sale{sales.length !== 1 ? "s" : ""} exist but are outside your {distLabel(dist, unit)} range ↑
+          </div>
+        )}
       </div>
     );
   }
