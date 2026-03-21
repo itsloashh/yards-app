@@ -29,7 +29,7 @@ export default function SaleDetailPage() {
   const distance = loc ? haversine(loc.lat, loc.lng, sale.coords.lat, sale.coords.lng, useKm) : 0;
   const distText = loc ? fmtDist(distance, unit) : "";
   const saved = isSaved(sale.id);
-  const isOwner = user && sale.seller?.name === user.name;
+  const isOwner = user && sale.userId === user.id;
 
   // Expiration info
   const isExpired = sale.expiresAt && Date.now() > sale.expiresAt;
