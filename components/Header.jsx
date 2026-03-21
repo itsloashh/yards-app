@@ -24,7 +24,7 @@ function YardLogo({ onClick }) {
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, loc, locName, locErr, locLoading, requestLocation, dist, setDist, unit, setUnit, setShowAuth } = useApp();
+  const { user, profile, loc, locName, locErr, locLoading, requestLocation, dist, setDist, unit, setUnit, setShowAuth } = useApp();
   const [query, setQuery] = useState("");
   const [distOpen, setDistOpen] = useState(false);
   const [catOpen, setCatOpen] = useState(false);
@@ -56,8 +56,8 @@ export default function Header() {
 
             <button onClick={() => user ? router.push("/profile") : setShowAuth(true)}
               className="w-9 h-9 rounded-full bg-white/15 backdrop-blur flex items-center justify-center hover:bg-white/25 transition">
-              {user
-                ? <span className="text-white font-bold text-sm">{user.name.split(" ").map(n => n[0]).join("").toUpperCase()}</span>
+              {user && profile?.name
+                ? <span className="text-white font-bold text-sm">{profile.name.split(" ").map(n => n[0]).join("").toUpperCase()}</span>
                 : <User className="w-5 h-5 text-white" />}
             </button>
           </div>
