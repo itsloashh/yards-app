@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Camera, X, MapPin, RefreshCw, Crosshair, Star, ChevronDown, AlertCircle } from "lucide-react";
+import { ChevronLeft, Camera, X, MapPin, RefreshCw, Crosshair, Star, ChevronDown, AlertCircle, Loader2 } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { CATEGORIES, SALE_PHOTOS } from "@/lib/constants";
 import { reverseGeocode } from "@/lib/geocode";
@@ -18,6 +18,7 @@ export default function CreatePage() {
   const [showFeatured, setShowFeatured] = useState(false);
   const [newItem, setNewItem] = useState({ name: "", price: "" });
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
   const fileRef = useRef(null);
 
   if (!user) {
@@ -77,9 +78,10 @@ export default function CreatePage() {
     return !Object.keys(e).length;
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!validate()) return;
-    handleCreateSale({
+    setLoading(true);
+    const result = await handleCreateSale({
       title: form.title.trim(),
       description: form.description.trim(),
       address: form.address.trim(),
@@ -87,11 +89,16 @@ export default function CreatePage() {
       date: new Date(form.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
         + (form.startTime ? `, ${form.startTime}` : "")
         + (form.endTime ? ` – ${form.endTime}` : ""),
-      photos: form.photos.length ? form.photos : [SALE_PHOTOS[Math.floor(Math.random() * SALE_PHOTOS.length)]],
+      photos: form.photos,
       tags: form.categories.length ? form.categories : ["General"],
       coords: loc || { lat: 42.3149, lng: -83.0364 },
       featuredItems: featuredItems.length ? featuredItems : undefined,
     });
+    setLoading(false);
+    if (result?.error) {
+      setErrors({ submit: result.error });
+      return;
+    }
     setSubmitted(true);
     setTimeout(() => router.push("/"), 1500);
   };
@@ -221,10 +228,17 @@ export default function CreatePage() {
         )}
       </div>
 
-      <button onClick={submit}
-        className="w-full py-4 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transition"
+      {errors.submit && (
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-rose-700 text-sm">
+          <AlertCircle className="w-5 h-5 shrink-0" />{errors.submit}
+        </div>
+      )}
+
+      <button onClick={submit} disabled={loading}
+        className="w-full py-4 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2 disabled:opacity-70"
         style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>
-        Post Your Sale
+        {loading && <Loader2 className="w-5 h-5 animate-spin" />}
+        {loading ? "Posting…" : "Post Your Sale"}
       </button>
     </div>
   );
