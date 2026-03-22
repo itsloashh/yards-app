@@ -18,6 +18,11 @@ export default function HomePage() {
 
   if (sortBy === "newest") filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   else if (sortBy === "ending") filtered.sort((a, b) => (a.expiresAt || Infinity) - (b.expiresAt || Infinity));
+  else if (sortBy === "upcoming") filtered.sort((a, b) => {
+    const aDate = a.dateRaw ? new Date(a.dateRaw).getTime() : Infinity;
+    const bDate = b.dateRaw ? new Date(b.dateRaw).getTime() : Infinity;
+    return aDate - bDate;
+  });
   else filtered.sort((a, b) => a.distance - b.distance);
 
   if (authLoading) {
@@ -46,19 +51,22 @@ export default function HomePage() {
           {sales.length === 0 ? "No Sales Posted Yet" : "No Sales Nearby"}
         </h3>
         <p className="text-stone-500 text-sm mb-1 max-w-[260px]">
-          {sales.length === 0
-            ? "Be the first to post a yard sale in your area!"
-            : "Try expanding your distance filter or check back later."}
+          {sales.length === 0 ? "Be the first to post a yard sale in your area!" : "Try expanding your distance filter or check back later."}
         </p>
         <p className="text-stone-400 text-xs">Tap the <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-white text-[10px] font-bold" style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>+</span> button below to get started.</p>
         {sales.length > 0 && (
           <div className="mt-6 px-4 py-2 bg-stone-50 rounded-xl text-xs text-stone-500">
-            {sales.length} sale{sales.length !== 1 ? "s" : ""} exist but are outside your {distLabel(dist, unit)} range ↑
+            {sales.length} sale{sales.length !== 1 ? "s" : ""} exist but outside your {distLabel(dist, unit)} range ↑
           </div>
         )}
       </div>
     );
   }
+
+  // Separate into active now vs upcoming
+  const now = Date.now();
+  const activeNow = filtered.filter(s => !s.dateRaw || new Date(s.dateRaw).getTime() <= now + 86400000);
+  const upcoming = filtered.filter(s => s.dateRaw && new Date(s.dateRaw).getTime() > now + 86400000);
 
   return (
     <div className="p-4 space-y-3 pb-6">
@@ -71,12 +79,25 @@ export default function HomePage() {
             <option value="distance">Nearest</option>
             <option value="newest">Newest</option>
             <option value="ending">Ending Soon</option>
+            <option value="upcoming">Upcoming</option>
           </select>
         </div>
       </div>
-      {filtered.map((s, i) => (
-        <SaleCard key={s.id} sale={s} delay={i * 0.04} />
-      ))}
+
+      {/* Active sales */}
+      {activeNow.map((s, i) => <SaleCard key={s.id} sale={s} delay={i * 0.04} />)}
+
+      {/* Upcoming section */}
+      {upcoming.length > 0 && (
+        <>
+          <div className="flex items-center gap-2 pt-4">
+            <div className="h-px flex-1 bg-stone-200" />
+            <span className="text-xs font-semibold text-stone-400 uppercase tracking-wide">Coming Up</span>
+            <div className="h-px flex-1 bg-stone-200" />
+          </div>
+          {upcoming.map((s, i) => <SaleCard key={s.id} sale={s} delay={(activeNow.length + i) * 0.04} />)}
+        </>
+      )}
     </div>
   );
 }
