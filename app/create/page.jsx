@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Camera, X, MapPin, RefreshCw, Crosshair, Star, ChevronDown, AlertCircle, Loader2 } from "lucide-react";
+import { ChevronLeft, Camera, X, MapPin, RefreshCw, Crosshair, Star, ChevronDown, AlertCircle, Loader2, CalendarX2 } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { CATEGORIES, SALE_PHOTOS } from "@/lib/constants";
 import { reverseGeocode } from "@/lib/geocode";
@@ -179,12 +179,35 @@ export default function CreatePage() {
             className={`w-full px-3 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm ${errors.date ? "border-rose-300 bg-rose-50" : "border-stone-200"}`} />
           {errors.date && <p className="text-rose-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.date}</p>}
         </div>
+        <div className="grid grid-rows-1 gap-3">
+          <div>
+            <label className="block font-medium text-stone-800 mb-1.5">Start Time</label>
+            <input type="time" value={form.startTime} onChange={e => set("startTime", e.target.value)}
+              className="w-full px-3 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
+          </div>
+        </div>
+      </div>
+
+      {/* End time row */}
+      <div className="grid grid-cols-2 gap-3">
+        <div />
         <div>
-          <label className="block font-medium text-stone-800 mb-1.5">Start Time</label>
-          <input type="time" value={form.startTime} onChange={e => set("startTime", e.target.value)}
+          <label className="block font-medium text-stone-800 mb-1.5">End Time</label>
+          <input type="time" value={form.endTime} onChange={e => set("endTime", e.target.value)}
             className="w-full px-3 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
         </div>
       </div>
+
+      {/* Past date warning */}
+      {form.date && new Date(form.date + "T23:59:59") < new Date() && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5">
+          <CalendarX2 className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-amber-800 text-sm font-semibold">This date has already passed</p>
+            <p className="text-amber-600 text-xs mt-0.5">Did you mean to pick an upcoming date? You can still post, but the sale will show as ended right away.</p>
+          </div>
+        </div>
+      )}
 
       {/* Categories */}
       <div>

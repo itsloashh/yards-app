@@ -1,13 +1,13 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2 } from "lucide-react";
+import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, Calendar, CheckCircle } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { AVATAR_COLORS } from "@/lib/constants";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, profile, handleLogout, handleUpdateProfile, handleDeleteSale, setShowAuth, unit, setUnit, userSales } = useApp();
+  const { user, profile, handleLogout, handleUpdateProfile, handleDeleteSale, setShowAuth, unit, setUnit, userSales, userActiveSales, userUpcomingSales, userPastSales } = useApp();
   const [editing, setEditing] = useState(false);
   const [viewingSales, setViewingSales] = useState(false);
 
@@ -23,7 +23,14 @@ export default function ProfilePage() {
   }
 
   if (editing) return <EditProfile profile={profile} onSave={async (u) => { await handleUpdateProfile(u); setEditing(false); }} onClose={() => setEditing(false)} />;
-  if (viewingSales) return <MySales sales={userSales} onClose={() => setViewingSales(false)} onDelete={handleDeleteSale} onView={(s) => { setViewingSales(false); router.push(`/sale/${s.id}`); }} />;
+  if (viewingSales) return <MySales
+    activeSales={userActiveSales}
+    upcomingSales={userUpcomingSales}
+    pastSales={userPastSales}
+    onClose={() => setViewingSales(false)}
+    onDelete={handleDeleteSale}
+    onView={(s) => { setViewingSales(false); router.push(`/sale/${s.id}`); }}
+  />;
 
   const initials = profile.name.split(" ").map(n => n[0]).join("").toUpperCase();
 
@@ -43,11 +50,11 @@ export default function ProfilePage() {
       <div className="grid grid-cols-3 gap-2 mb-4">
         <div className="bg-stone-50 rounded-xl p-3 text-center">
           <p className="text-lg font-bold text-stone-800">{userSales.length}</p>
-          <p className="text-stone-500 text-[11px]">Sales Posted</p>
+          <p className="text-stone-500 text-[11px]">Total Sales</p>
         </div>
         <div className="bg-stone-50 rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-stone-800">{profile.rating || "—"}</p>
-          <p className="text-stone-500 text-[11px]">Rating</p>
+          <p className="text-lg font-bold text-emerald-600">{userActiveSales.length + userUpcomingSales.length}</p>
+          <p className="text-stone-500 text-[11px]">Active / Upcoming</p>
         </div>
         <div className="bg-stone-50 rounded-xl p-3 text-center">
           <p className="text-[11px] text-stone-500 mb-1">Distance</p>
@@ -132,32 +139,90 @@ function EditProfile({ profile, onSave, onClose }) {
   );
 }
 
-function MySales({ sales, onClose, onDelete, onView }) {
+function MySales({ activeSales, upcomingSales, pastSales, onClose, onDelete, onView }) {
+  const [tab, setTab] = useState("active");
   const [deleting, setDeleting] = useState(null);
+
+  const tabs = [
+    { key: "active", label: "Active", count: activeSales.length, icon: Clock, color: "emerald" },
+    { key: "upcoming", label: "Upcoming", count: upcomingSales.length, icon: Calendar, color: "blue" },
+    { key: "past", label: "Past", count: pastSales.length, icon: CheckCircle, color: "stone" },
+  ];
+
+  const currentSales = tab === "active" ? activeSales : tab === "upcoming" ? upcomingSales : pastSales;
+  const isPast = tab === "past";
+
   return (
     <div className="p-4">
       <div className="flex items-center gap-3 mb-4">
         <button onClick={onClose} className="p-2 hover:bg-stone-100 rounded-full"><ChevronLeft className="w-6 h-6 text-stone-600" /></button>
         <h1 className="text-xl font-bold text-stone-800 font-display">My Sales</h1>
       </div>
-      {!sales.length ? (
+
+      {/* Tab bar */}
+      <div className="flex gap-1.5 mb-5 bg-stone-100 rounded-xl p-1">
+        {tabs.map(t => {
+          const active = tab === t.key;
+          return (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className={`flex-1 py-2.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5
+                ${active ? "bg-white shadow-sm text-stone-800" : "text-stone-500 hover:text-stone-700"}`}>
+              <t.icon className={`w-3.5 h-3.5 ${active ? (t.color === "emerald" ? "text-emerald-500" : t.color === "blue" ? "text-blue-500" : "text-stone-400") : ""}`} />
+              {t.label}
+              {t.count > 0 && (
+                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold
+                  ${active ? (t.color === "emerald" ? "bg-emerald-100 text-emerald-700" : t.color === "blue" ? "bg-blue-100 text-blue-700" : "bg-stone-200 text-stone-600") : "bg-stone-200 text-stone-500"}`}>
+                  {t.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Empty state */}
+      {!currentSales.length ? (
         <div className="flex flex-col items-center justify-center p-12 text-center">
-          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-4"><Tag className="w-10 h-10 text-emerald-400" /></div>
-          <h3 className="text-lg font-bold text-stone-800 mb-2 font-display">No Sales Yet</h3>
-          <p className="text-stone-500 text-sm">Tap the <span className="text-emerald-600 font-semibold">+</span> button to create your first one!</p>
+          <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 ${isPast ? "bg-stone-100" : "bg-emerald-100"}`}>
+            <Tag className={`w-10 h-10 ${isPast ? "text-stone-300" : "text-emerald-400"}`} />
+          </div>
+          <h3 className="text-lg font-bold text-stone-800 mb-2 font-display">
+            {tab === "active" ? "No Active Sales" : tab === "upcoming" ? "No Upcoming Sales" : "No Past Sales"}
+          </h3>
+          <p className="text-stone-500 text-sm">
+            {tab === "active" ? "Post a sale to see it here!" : tab === "upcoming" ? "Schedule a future sale to see it here." : "Your ended sales will appear here."}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {sales.map((s, i) => (
-            <div key={s.id} className="bg-white rounded-2xl shadow-md border border-stone-100 overflow-hidden" style={{ animation: `fadeUp 0.4s ease-out ${i * 0.05}s both` }}>
+          {currentSales.map((s, i) => (
+            <div key={s.id}
+              className={`rounded-2xl shadow-md border overflow-hidden ${isPast ? "bg-stone-50 border-stone-200 opacity-75" : "bg-white border-stone-100"}`}
+              style={{ animation: `fadeUp 0.4s ease-out ${i * 0.05}s both` }}>
               <div className="flex gap-3 p-3 cursor-pointer" onClick={() => onView(s)}>
-                <img src={s.photos?.[0] || ""} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0" />
+                {s.photos?.[0] ? (
+                  <img src={s.photos[0]} alt="" className={`w-20 h-20 rounded-xl object-cover shrink-0 ${isPast ? "grayscale" : ""}`} />
+                ) : (
+                  <div className={`w-20 h-20 rounded-xl flex items-center justify-center shrink-0 ${isPast ? "bg-stone-200" : "bg-emerald-100"}`}>
+                    <span className="text-2xl">🏷️</span>
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-stone-800 text-sm truncate">{s.title}</h3>
-                  {s.address && <p className="text-emerald-600 text-xs mt-0.5">📍 {s.address}</p>}
-                  <p className="text-stone-500 text-xs mt-0.5">{s.date}</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className={`font-bold text-sm truncate ${isPast ? "text-stone-500" : "text-stone-800"}`}>{s.title}</h3>
+                    {isPast && (
+                      <span className="px-2 py-0.5 bg-stone-200 text-stone-500 text-[10px] font-semibold rounded-full shrink-0">Ended</span>
+                    )}
+                    {tab === "upcoming" && (
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-600 text-[10px] font-semibold rounded-full shrink-0">Upcoming</span>
+                    )}
+                  </div>
+                  {s.address && <p className={`text-xs mt-0.5 ${isPast ? "text-stone-400" : "text-emerald-600"}`}>📍 {s.address}</p>}
+                  <p className={`text-xs mt-0.5 ${isPast ? "text-stone-400" : "text-stone-500"}`}>{s.date}</p>
                 </div>
               </div>
+
+              {/* Delete button */}
               <div className="px-3 pb-3">
                 <button onClick={() => setDeleting(deleting === s.id ? null : s.id)}
                   className="w-full py-2 bg-rose-50 border border-rose-200 text-rose-600 font-medium rounded-lg text-xs flex items-center justify-center gap-1 hover:bg-rose-100 transition">

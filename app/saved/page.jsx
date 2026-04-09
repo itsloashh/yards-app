@@ -5,11 +5,11 @@ import { haversine, fmtDist } from "@/lib/distance";
 import SaleCard from "@/components/SaleCard";
 
 export default function SavedPage() {
-  const { sales, saved, loc, unit } = useApp();
+  const { sales, savedIds, loc, unit } = useApp();
 
   const useKm = unit === "km";
   const savedSales = sales
-    .filter(s => saved.includes(s.id))
+    .filter(s => savedIds.includes(s.id))
     .map(s => {
       if (!loc) return { ...s, distance: 0, distanceText: "…" };
       const d = haversine(loc.lat, loc.lng, s.coords.lat, s.coords.lng, useKm);
