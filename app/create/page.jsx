@@ -3,7 +3,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Camera, X, MapPin, RefreshCw, Crosshair, Star, ChevronDown, AlertCircle, Loader2, CalendarX2 } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
-import { CATEGORIES, SALE_PHOTOS } from "@/lib/constants";
+import { CATEGORIES } from "@/lib/constants";
 import { reverseGeocode } from "@/lib/geocode";
 import { compressImage } from "@/lib/imageUtils";
 
@@ -78,14 +78,20 @@ export default function CreatePage() {
     return !Object.keys(e).length;
   };
 
+  // Check if selected date is in the past
+  const isPastDate = form.date && new Date(form.date + "T23:59:59") < new Date();
+
   const submit = async () => {
     if (!validate()) return;
     setLoading(true);
+    setErrors({});
     const result = await handleCreateSale({
       title: form.title.trim(),
       description: form.description.trim(),
       address: form.address.trim(),
       dateRaw: form.date,
+      startTime: form.startTime || null,
+      endTime: form.endTime || null,
       date: new Date(form.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
         + (form.startTime ? `, ${form.startTime}` : "")
         + (form.endTime ? ` – ${form.endTime}` : ""),
@@ -97,6 +103,8 @@ export default function CreatePage() {
     setLoading(false);
     if (result?.error) {
       setErrors({ submit: result.error });
+      // Scroll to the error at the bottom so user sees it
+      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }), 50);
       return;
     }
     setSubmitted(true);
@@ -172,6 +180,7 @@ export default function CreatePage() {
         )}
       </div>
 
+      {/* Date + Start Time */}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block font-medium text-stone-800 mb-1.5">Date <span className="text-rose-500">*</span></label>
@@ -179,16 +188,14 @@ export default function CreatePage() {
             className={`w-full px-3 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm ${errors.date ? "border-rose-300 bg-rose-50" : "border-stone-200"}`} />
           {errors.date && <p className="text-rose-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.date}</p>}
         </div>
-        <div className="grid grid-rows-1 gap-3">
-          <div>
-            <label className="block font-medium text-stone-800 mb-1.5">Start Time</label>
-            <input type="time" value={form.startTime} onChange={e => set("startTime", e.target.value)}
-              className="w-full px-3 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
-          </div>
+        <div>
+          <label className="block font-medium text-stone-800 mb-1.5">Start Time</label>
+          <input type="time" value={form.startTime} onChange={e => set("startTime", e.target.value)}
+            className="w-full px-3 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
         </div>
       </div>
 
-      {/* End time row */}
+      {/* End Time */}
       <div className="grid grid-cols-2 gap-3">
         <div />
         <div>
@@ -199,7 +206,7 @@ export default function CreatePage() {
       </div>
 
       {/* Past date warning */}
-      {form.date && new Date(form.date + "T23:59:59") < new Date() && (
+      {isPastDate && (
         <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5">
           <CalendarX2 className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
           <div>

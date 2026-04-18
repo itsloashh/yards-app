@@ -7,7 +7,10 @@ import { AVATAR_COLORS } from "@/lib/constants";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, profile, handleLogout, handleUpdateProfile, handleDeleteSale, setShowAuth, unit, setUnit, userSales, userActiveSales, userUpcomingSales, userPastSales } = useApp();
+  const {
+    user, profile, handleLogout, handleUpdateProfile, handleDeleteSale, setShowAuth,
+    unit, setUnit, userSales, userActiveSales, userUpcomingSales, userPastSales,
+  } = useApp();
   const [editing, setEditing] = useState(false);
   const [viewingSales, setViewingSales] = useState(false);
 
@@ -222,7 +225,6 @@ function MySales({ activeSales, upcomingSales, pastSales, onClose, onDelete, onV
                 </div>
               </div>
 
-              {/* Delete button */}
               <div className="px-3 pb-3">
                 <button onClick={() => setDeleting(deleting === s.id ? null : s.id)}
                   className="w-full py-2 bg-rose-50 border border-rose-200 text-rose-600 font-medium rounded-lg text-xs flex items-center justify-center gap-1 hover:bg-rose-100 transition">
