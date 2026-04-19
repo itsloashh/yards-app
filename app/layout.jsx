@@ -11,6 +11,7 @@ const body = Outfit({ subsets: ["latin"], variable: "--font-body", weight: ["300
 const display = Fraunces({ subsets: ["latin"], variable: "--font-display", weight: ["700", "800", "900"] });
 
 export const metadata = {
+  metadataBase: new URL("https://shopyards.ca"),
   title: "Yard$ — Yard Sale Marketplace",
   description: "Find and post yard sales near you. The live yard sale map for your city.",
   manifest: "/manifest.json",
@@ -18,6 +19,28 @@ export const metadata = {
   viewport: "width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Yard$" },
   icons: { apple: "/icon-192.png" },
+  openGraph: {
+    title: "Yard$ — Yard Sale Marketplace",
+    description: "Find and post yard sales near you. The live yard sale map for your city.",
+    url: "https://shopyards.ca",
+    siteName: "Yard$",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Yard$ — The live yard sale marketplace",
+      },
+    ],
+    locale: "en_CA",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Yard$ — Yard Sale Marketplace",
+    description: "Find and post yard sales near you. The live yard sale map for your city.",
+    images: ["/og-image.png"],
+  },
 };
 
 export default function RootLayout({ children }) {
