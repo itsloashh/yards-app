@@ -48,10 +48,13 @@ export default function AuthModal() {
       setLoading(false);
       if (result.error) {
         setGlobalErr(result.error);
-      } else {
-        // Show confirmation screen
+      } else if (result.needsConfirmation) {
+        // Email confirmation is required - show the "check your email" screen
         setConfirmEmail(email.trim().toLowerCase());
         setConfirmSent(true);
+      } else {
+        // Instant signup - user is logged in, just close the modal
+        closeAndReset();
       }
     } else {
       if (!email.trim()) e.email = "Email required";
@@ -62,7 +65,6 @@ export default function AuthModal() {
       const result = await handleLogin(email.trim().toLowerCase(), pw);
       setLoading(false);
       if (result.error) {
-        // Friendlier message for unconfirmed email
         if (result.error.toLowerCase().includes("email not confirmed") ||
             result.error.toLowerCase().includes("not confirmed")) {
           setGlobalErr("Please confirm your email first. Check your inbox for the confirmation link.");
@@ -158,12 +160,6 @@ export default function AuthModal() {
             {loading && <Loader2 className="w-5 h-5 animate-spin" />}
             {loading ? "Please wait…" : authMode === "login" ? "Sign In" : "Create Account"}
           </button>
-
-          {authMode === "signup" && (
-            <p className="text-center text-stone-400 text-[11px] leading-relaxed px-2">
-              We'll email you a confirmation link to verify your account.
-            </p>
-          )}
         </div>
 
         <p className="text-center text-stone-600 text-sm mt-5">
