@@ -5,7 +5,7 @@ import { haversine, fmtDist, distLabel } from "@/lib/distance";
 import SaleCard from "@/components/SaleCard";
 
 export default function HomePage() {
-  const { activeSales, upcomingSales, loc, dist, unit, sortBy, setSortBy, authLoading, salesLoading, sales, connOk } = useApp();
+  const { activeSales, upcomingSales, loc, dist, unit, sortBy, setSortBy, authLoading, salesLoading, sales, connOk, salesLoadError } = useApp();
 
   const useKm = unit === "km";
 
@@ -38,9 +38,12 @@ export default function HomePage() {
     connOk === false ? (
       <div className="mx-4 mt-4 mb-1 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5">
         <WifiOff className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-        <div>
+        <div className="flex-1 min-w-0">
           <p className="text-amber-800 text-xs font-semibold">We're having trouble loading sales</p>
           <p className="text-amber-600 text-[11px] mt-0.5">Please try again in a moment — we'll keep retrying.</p>
+          {salesLoadError && (
+            <p className="text-red-700 text-[10px] mt-1 font-mono break-all">[debug] {salesLoadError}</p>
+          )}
         </div>
       </div>
     ) : null
