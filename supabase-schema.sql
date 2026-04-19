@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   avatar_color TEXT DEFAULT '#059669',
   sales_posted INTEGER DEFAULT 0,
   rating NUMERIC(2,1) DEFAULT 0,
+  time_format TEXT DEFAULT '12h',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -44,31 +45,50 @@ CREATE TABLE IF NOT EXISTS saved_sales (
   PRIMARY KEY (user_id, sale_id)
 );
 
--- Enable Row Level Security
+-- ═══ ROW LEVEL SECURITY ═══
+
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
 ALTER TABLE saved_sales ENABLE ROW LEVEL SECURITY;
 
--- Profiles: anyone can read, only owner can update
-CREATE POLICY "Profiles are viewable by everyone" ON profiles FOR SELECT USING (true);
+-- Profiles
+CREATE POLICY "Profiles viewable by everyone" ON profiles FOR SELECT USING (true);
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
--- Sales: anyone can read, only owner can insert/update/delete
-CREATE POLICY "Sales are viewable by everyone" ON sales FOR SELECT USING (true);
+-- Sales
+CREATE POLICY "Sales viewable by everyone" ON sales FOR SELECT USING (true);
 CREATE POLICY "Users can create sales" ON sales FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own sales" ON sales FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own sales" ON sales FOR DELETE USING (auth.uid() = user_id);
 
--- Saved: only owner can manage their saves
+-- Saved
 CREATE POLICY "Users can view own saves" ON saved_sales FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can save sales" ON saved_sales FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can unsave sales" ON saved_sales FOR DELETE USING (auth.uid() = user_id);
 
--- Index for location-based queries
+-- Indexes
 CREATE INDEX IF NOT EXISTS idx_sales_location ON sales (lat, lng);
 CREATE INDEX IF NOT EXISTS idx_sales_created ON sales (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sales_expires ON sales (expires_at);
 
--- Enable realtime for sales (so new sales appear instantly)
+-- Realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE sales;
+
+-- ═══ STORAGE BUCKET FOR PHOTOS ═══
+
+INSERT INTO storage.buckets (id, name, public) VALUES ('sale-photos', 'sale-photos', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Anyone can view photos
+CREATE POLICY "Public photo access" ON storage.objects FOR SELECT USING (bucket_id = 'sale-photos');
+
+-- Authenticated users can upload
+CREATE POLICY "Users can upload photos" ON storage.objects FOR INSERT WITH CHECK (
+  bucket_id = 'sale-photos' AND auth.role() = 'authenticated'
+);
+
+-- Users can delete their own photos (path starts with their user id)
+CREATE POLICY "Users can delete own photos" ON storage.objects FOR DELETE USING (
+  bucket_id = 'sale-photos' AND (storage.foldername(name))[1] = auth.uid()::text
+);

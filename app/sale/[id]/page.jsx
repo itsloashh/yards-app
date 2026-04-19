@@ -4,11 +4,12 @@ import { useRouter, useParams } from "next/navigation";
 import { ChevronLeft, Heart, Clock, MapPin, Navigation, Star, Phone, Mail, MessageCircle, Trash2, Edit, Share2, AlertCircle } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { haversine, fmtDist } from "@/lib/distance";
+import { formatSaleDate } from "@/lib/timeFormat";
 
 export default function SaleDetailPage() {
   const router = useRouter();
   const { id } = useParams();
-  const { sales, loc, unit, toggleSaved, isSaved, user, handleDeleteSale } = useApp();
+  const { sales, loc, unit, toggleSaved, isSaved, user, handleDeleteSale, profile } = useApp();
   const [photo, setPhoto] = useState(0);
   const [showContact, setShowContact] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -30,6 +31,10 @@ export default function SaleDetailPage() {
   const distText = loc ? fmtDist(distance, unit) : "";
   const saved = isSaved(sale.id);
   const isOwner = user && sale.userId === user.id;
+  const tf = profile?.time_format === "24h" ? "24h" : "12h";
+  const displayDate = sale.dateRaw
+    ? formatSaleDate(sale.dateRaw, sale.startTime, sale.endTime, tf)
+    : (sale.date || "TBD");
 
   // Expiration info
   const isExpired = sale.expiresAt && Date.now() > sale.expiresAt;
@@ -113,7 +118,7 @@ export default function SaleDetailPage() {
             </div>
           )}
           <div className="flex items-center gap-1.5 text-emerald-600 font-medium mt-1.5 text-sm">
-            <Clock className="w-4 h-4" />{sale.date}
+            <Clock className="w-4 h-4" />{displayDate}
           </div>
         </div>
 

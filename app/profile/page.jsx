@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, Calendar, CheckCircle } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { AVATAR_COLORS } from "@/lib/constants";
+import { formatSaleDate } from "@/lib/timeFormat";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -98,12 +99,13 @@ function EditProfile({ profile, onSave, onClose }) {
   const [bio, setBio] = useState(profile.bio || "");
   const [phone, setPhone] = useState(profile.phone || "");
   const [avatarColor, setAvatarColor] = useState(profile.avatar_color || "#059669");
+  const [timeFormat, setTimeFormat] = useState(profile.time_format === "24h" ? "24h" : "12h");
   const [saving, setSaving] = useState(false);
   const initials = name.split(" ").map(n => n[0] || "").join("").toUpperCase();
 
   const save = async () => {
     setSaving(true);
-    await onSave({ name: name.trim() || profile.name, bio: bio.slice(0, 150), phone, avatar_color: avatarColor });
+    await onSave({ name: name.trim() || profile.name, bio: bio.slice(0, 150), phone, avatar_color: avatarColor, time_format: timeFormat });
     setSaving(false);
   };
 
@@ -135,6 +137,33 @@ function EditProfile({ profile, onSave, onClose }) {
         <label className="block font-medium text-stone-800 mb-1.5">Phone <span className="text-stone-400 text-xs font-normal">(visible to buyers)</span></label>
         <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(519) 555-1234" className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
       </div>
+
+      {/* Preferences */}
+      <div className="pt-2">
+        <p className="text-xs font-semibold text-stone-400 uppercase tracking-wide mb-3">Preferences</p>
+        <div className="bg-stone-50 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-stone-800 text-sm">Time format</p>
+              <p className="text-stone-500 text-xs mt-0.5">How sale times appear across the app</p>
+            </div>
+            <div className="flex items-center bg-white rounded-lg p-1 border border-stone-200">
+              <button type="button" onClick={() => setTimeFormat("12h")}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${timeFormat === "12h" ? "bg-emerald-600 text-white shadow-sm" : "text-stone-500 hover:text-stone-700"}`}>
+                12h
+              </button>
+              <button type="button" onClick={() => setTimeFormat("24h")}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${timeFormat === "24h" ? "bg-emerald-600 text-white shadow-sm" : "text-stone-500 hover:text-stone-700"}`}>
+                24h
+              </button>
+            </div>
+          </div>
+          <p className="text-stone-400 text-[11px] mt-2">
+            Preview: {timeFormat === "12h" ? "6:18 PM" : "18:18"}
+          </p>
+        </div>
+      </div>
+
       <button onClick={save} disabled={saving} className="w-full py-4 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transition disabled:opacity-70" style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>
         {saving ? "Saving…" : "Save Changes"}
       </button>
@@ -143,6 +172,8 @@ function EditProfile({ profile, onSave, onClose }) {
 }
 
 function MySales({ activeSales, upcomingSales, pastSales, onClose, onDelete, onView }) {
+  const { profile } = useApp();
+  const tf = profile?.time_format === "24h" ? "24h" : "12h";
   const [tab, setTab] = useState("active");
   const [deleting, setDeleting] = useState(null);
 
@@ -221,7 +252,7 @@ function MySales({ activeSales, upcomingSales, pastSales, onClose, onDelete, onV
                     )}
                   </div>
                   {s.address && <p className={`text-xs mt-0.5 ${isPast ? "text-stone-400" : "text-emerald-600"}`}>📍 {s.address}</p>}
-                  <p className={`text-xs mt-0.5 ${isPast ? "text-stone-400" : "text-stone-500"}`}>{s.date}</p>
+                  <p className={`text-xs mt-0.5 ${isPast ? "text-stone-400" : "text-stone-500"}`}>{s.dateRaw ? formatSaleDate(s.dateRaw, s.startTime, s.endTime, tf) : (s.date || "TBD")}</p>
                 </div>
               </div>
 

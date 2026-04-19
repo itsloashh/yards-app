@@ -6,10 +6,11 @@ import { useApp } from "@/lib/AppContext";
 import { CATEGORIES } from "@/lib/constants";
 import { reverseGeocode } from "@/lib/geocode";
 import { compressImage } from "@/lib/imageUtils";
+import { formatSaleDate } from "@/lib/timeFormat";
 
 export default function CreatePage() {
   const router = useRouter();
-  const { user, loc, handleCreateSale, setShowAuth } = useApp();
+  const { user, loc, handleCreateSale, setShowAuth, profile } = useApp();
   const [form, setForm] = useState({ title: "", description: "", address: "", date: "", startTime: "", endTime: "", categories: [], photos: [] });
   const [errors, setErrors] = useState({});
   const [geoLoading, setGeoLoading] = useState(false);
@@ -85,6 +86,7 @@ export default function CreatePage() {
     if (!validate()) return;
     setLoading(true);
     setErrors({});
+    const userTimeFormat = profile?.time_format === "24h" ? "24h" : "12h";
     const result = await handleCreateSale({
       title: form.title.trim(),
       description: form.description.trim(),
@@ -92,9 +94,7 @@ export default function CreatePage() {
       dateRaw: form.date,
       startTime: form.startTime || null,
       endTime: form.endTime || null,
-      date: new Date(form.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
-        + (form.startTime ? `, ${form.startTime}` : "")
-        + (form.endTime ? ` – ${form.endTime}` : ""),
+      date: formatSaleDate(form.date, form.startTime, form.endTime, userTimeFormat),
       photos: form.photos,
       tags: form.categories.length ? form.categories : ["General"],
       coords: loc || { lat: 42.3149, lng: -83.0364 },

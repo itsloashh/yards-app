@@ -2,6 +2,7 @@
 import { Heart, Clock, MapPin, Calendar } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
+import { formatSaleDate, parseLocalDate } from "@/lib/timeFormat";
 
 // Placeholder gradient when no photo exists
 function PhotoPlaceholder({ title }) {
@@ -23,14 +24,28 @@ function PhotoPlaceholder({ title }) {
 
 export default function SaleCard({ sale, delay = 0 }) {
   const router = useRouter();
-  const { toggleSaved, isSaved } = useApp();
+  const { toggleSaved, isSaved, profile } = useApp();
   const saved = isSaved(sale.id);
+  const tf = profile?.time_format === "24h" ? "24h" : "12h";
 
   const hasPhoto = sale.photos?.length > 0 && sale.photos[0];
   const now = Date.now();
-  const isUpcoming = sale.dateRaw && new Date(sale.dateRaw).getTime() > now + 86400000;
+  const saleStartMs = sale.dateRaw
+    ? (() => {
+        const startStr = sale.startTime && /^\d{2}:\d{2}/.test(sale.startTime)
+          ? `${sale.dateRaw}T${sale.startTime}`
+          : `${sale.dateRaw}T00:00`;
+        return new Date(startStr).getTime();
+      })()
+    : null;
+  const isUpcoming = saleStartMs && saleStartMs > now;
   const hoursLeft = sale.expiresAt ? Math.max(0, Math.floor((sale.expiresAt - now) / 3600000)) : null;
   const isEnding = hoursLeft !== null && hoursLeft < 24 && hoursLeft > 0 && !isUpcoming;
+
+  // Dynamically format the date using the user's time preference
+  const displayDate = sale.dateRaw
+    ? formatSaleDate(sale.dateRaw, sale.startTime, sale.endTime, tf)
+    : (sale.date || "TBD");
 
   return (
     <div onClick={() => router.push(`/sale/${sale.id}`)}
@@ -70,7 +85,7 @@ export default function SaleCard({ sale, delay = 0 }) {
         )}
         <div className="flex items-center gap-1.5 text-stone-500 text-[13px] mb-2">
           <Clock className="w-3.5 h-3.5" />
-          <span>{sale.date}</span>
+          <span>{displayDate}</span>
         </div>
         <div className="flex gap-1.5 flex-wrap">
           {sale.tags?.slice(0, 3).map(t => (
