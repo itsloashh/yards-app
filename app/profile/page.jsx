@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, Calendar, CheckCircle } from "lucide-react";
+import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, Calendar, CheckCircle, MessageCircle } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { AVATAR_COLORS } from "@/lib/constants";
 import { formatSaleDate } from "@/lib/timeFormat";
@@ -22,6 +22,9 @@ export default function ProfilePage() {
         <h3 className="text-lg font-bold text-stone-800 mb-2 font-display">Sign In to Continue</h3>
         <p className="text-stone-500 mb-6 text-sm">Create an account to post your own yard sales!</p>
         <button onClick={() => setShowAuth(true)} className="px-8 py-3 text-white font-bold rounded-xl shadow-lg transition" style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>Sign In or Create Account</button>
+        <button onClick={() => router.push("/contact")} className="mt-5 text-stone-500 text-sm font-medium hover:text-emerald-600 transition flex items-center gap-1.5">
+          <MessageCircle className="w-4 h-4" /> Contact Us
+        </button>
       </div>
     );
   }
@@ -78,6 +81,7 @@ export default function ProfilePage() {
         <PBtn icon={UserCircle} color="emerald" label="Edit Profile" onClick={() => setEditing(true)} />
         <PBtn icon={Plus} color="emerald" label="Post a Yard Sale" onClick={() => router.push("/create")} />
         <PBtn icon={Eye} color="stone" label={`My Sales (${userSales.length})`} onClick={() => setViewingSales(true)} />
+        <PBtn icon={MessageCircle} color="stone" label="Contact Us" onClick={() => router.push("/contact")} />
         <PBtn icon={LogOut} color="rose" label="Sign Out" onClick={async () => { await handleLogout(); router.push("/"); }} />
       </div>
     </div>
