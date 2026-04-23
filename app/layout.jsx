@@ -18,8 +18,22 @@ export const metadata = {
   manifest: "/manifest.json",
   themeColor: "#059669",
   viewport: "width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Yard$" },
-  icons: { apple: "/icon-192.png" },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Yard$",
+  },
+  icons: {
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/favicon-32.png",
+  },
   openGraph: {
     title: "Yard$ — Yard Sale Marketplace",
     description: "Find and post yard sales near you. The live yard sale map for your city.",
