@@ -14,6 +14,12 @@ CREATE TABLE IF NOT EXISTS profiles (
   sales_posted INTEGER DEFAULT 0,
   rating NUMERIC(2,1) DEFAULT 0,
   time_format TEXT DEFAULT '12h',
+  location TEXT DEFAULT '',
+  location_city TEXT DEFAULT '',
+  location_region TEXT DEFAULT '',
+  location_country TEXT DEFAULT '',
+  location_lat DOUBLE PRECISION,
+  location_lng DOUBLE PRECISION,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

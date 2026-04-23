@@ -5,6 +5,7 @@ import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, C
 import { useApp } from "@/lib/AppContext";
 import { AVATAR_COLORS } from "@/lib/constants";
 import { formatSaleDate } from "@/lib/timeFormat";
+import LocationAutocomplete from "@/components/LocationAutocomplete";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -104,12 +105,39 @@ function EditProfile({ profile, onSave, onClose }) {
   const [phone, setPhone] = useState(profile.phone || "");
   const [avatarColor, setAvatarColor] = useState(profile.avatar_color || "#059669");
   const [timeFormat, setTimeFormat] = useState(profile.time_format === "24h" ? "24h" : "12h");
+  // Location pre-fill from existing profile if set
+  const [location, setLocation] = useState(
+    profile.location ? {
+      label: profile.location,
+      city: profile.location_city || "",
+      region: profile.location_region || "",
+      country: profile.location_country || "",
+      lat: profile.location_lat,
+      lng: profile.location_lng,
+    } : null
+  );
   const [saving, setSaving] = useState(false);
   const initials = name.split(" ").map(n => n[0] || "").join("").toUpperCase();
 
   const save = async () => {
     setSaving(true);
-    await onSave({ name: name.trim() || profile.name, bio: bio.slice(0, 150), phone, avatar_color: avatarColor, time_format: timeFormat });
+    const updates = {
+      name: name.trim() || profile.name,
+      bio: bio.slice(0, 150),
+      phone,
+      avatar_color: avatarColor,
+      time_format: timeFormat,
+    };
+    // Only write location fields if user selected a new one
+    if (location?.label) {
+      updates.location = location.label;
+      updates.location_city = location.city || "";
+      updates.location_region = location.region || "";
+      updates.location_country = location.country || "";
+      updates.location_lat = location.lat || null;
+      updates.location_lng = location.lng || null;
+    }
+    await onSave(updates);
     setSaving(false);
   };
 
@@ -140,6 +168,16 @@ function EditProfile({ profile, onSave, onClose }) {
       <div>
         <label className="block font-medium text-stone-800 mb-1.5">Phone <span className="text-stone-400 text-xs font-normal">(visible to buyers)</span></label>
         <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(519) 555-1234" className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
+      </div>
+
+      <div>
+        <label className="block font-medium text-stone-800 mb-1.5">Primary Yard Sale Area</label>
+        <LocationAutocomplete
+          value={location}
+          onChange={setLocation}
+          placeholder="e.g., Windsor, Ontario"
+        />
+        <p className="text-stone-400 text-xs mt-1.5">Where you yard sale most.</p>
       </div>
 
       {/* Preferences */}

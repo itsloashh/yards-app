@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { X, UserCircle, Mail, Lock, Eye, AlertCircle, Loader2, MailCheck } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
+import LocationAutocomplete from "./LocationAutocomplete";
 
 export default function AuthModal() {
   const { showAuth, setShowAuth, authMode, setAuthMode, handleSignUp, handleLogin } = useApp();
@@ -9,6 +10,7 @@ export default function AuthModal() {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
+  const [location, setLocation] = useState(null); // { label, city, region, country, lat, lng }
   const [errs, setErrs] = useState({});
   const [globalErr, setGlobalErr] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -18,17 +20,18 @@ export default function AuthModal() {
 
   if (!showAuth) return null;
 
+  const clearForm = () => {
+    setErrs({}); setGlobalErr(""); setName(""); setEmail(""); setPw(""); setPw2(""); setLocation(null);
+    setConfirmSent(false); setConfirmEmail("");
+  };
+
   const closeAndReset = () => {
     setShowAuth(false);
-    setTimeout(() => {
-      setErrs({}); setGlobalErr(""); setName(""); setEmail(""); setPw(""); setPw2("");
-      setConfirmSent(false); setConfirmEmail("");
-    }, 200);
+    setTimeout(clearForm, 200);
   };
 
   const reset = () => {
-    setErrs({}); setGlobalErr(""); setName(""); setEmail(""); setPw(""); setPw2("");
-    setConfirmSent(false); setConfirmEmail("");
+    clearForm();
     setAuthMode(authMode === "login" ? "signup" : "login");
   };
 
@@ -41,19 +44,18 @@ export default function AuthModal() {
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Invalid email";
       if (!pw || pw.length < 8) e.pw = "At least 8 characters";
       if (pw !== pw2) e.pw2 = "Passwords don't match";
+      if (!location || !location.label) e.location = "Please select your location from the dropdown";
       setErrs(e);
       if (Object.keys(e).length) return;
       setLoading(true);
-      const result = await handleSignUp(name.trim(), email.trim().toLowerCase(), pw);
+      const result = await handleSignUp(name.trim(), email.trim().toLowerCase(), pw, location);
       setLoading(false);
       if (result.error) {
         setGlobalErr(result.error);
       } else if (result.needsConfirmation) {
-        // Email confirmation is required - show the "check your email" screen
         setConfirmEmail(email.trim().toLowerCase());
         setConfirmSent(true);
       } else {
-        // Instant signup - user is logged in, just close the modal
         closeAndReset();
       }
     } else {
@@ -121,7 +123,7 @@ export default function AuthModal() {
 
   return (
     <div className="absolute inset-0 bg-black/50 z-[300] flex items-end animate-fade-in">
-      <div className="bg-white w-full rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto animate-slide-up">
+      <div className="bg-white w-full rounded-t-3xl p-6 max-h-[90vh] overflow-y-auto animate-slide-up">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="text-2xl font-bold text-stone-800 font-display">
@@ -151,7 +153,23 @@ export default function AuthModal() {
             placeholder={authMode === "signup" ? "At least 8 characters" : "Your password"}
             right={<button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"><Eye className="w-5 h-5" /></button>} />
           {authMode === "signup" && (
-            <Field icon={Lock} label="Confirm Password" type={showPw ? "text" : "password"} value={pw2} onChange={setPw2} err={errs.pw2} placeholder="Confirm password" />
+            <>
+              <Field icon={Lock} label="Confirm Password" type={showPw ? "text" : "password"} value={pw2} onChange={setPw2} err={errs.pw2} placeholder="Confirm password" />
+
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">
+                  Primary Yard Sale Area <span className="text-rose-500">*</span>
+                </label>
+                <LocationAutocomplete
+                  value={location}
+                  onChange={setLocation}
+                  error={errs.location}
+                  placeholder="e.g., Windsor, Ontario"
+                />
+                {errs.location && <p className="text-rose-500 text-xs mt-1">{errs.location}</p>}
+                <p className="text-stone-400 text-[11px] mt-1.5">Where do you yard sale most? Helps us grow in your area.</p>
+              </div>
+            </>
           )}
 
           <button onClick={submit} disabled={loading}
