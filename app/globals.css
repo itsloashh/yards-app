@@ -36,17 +36,18 @@ body {
 .sale-marker-inner {
   width: 40px; height: 40px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #059669, #84cc16);
+  background: #10b981;
   border: 3px solid white; box-shadow: 0 3px 12px rgba(0,0,0,0.3);
   cursor: pointer; transition: transform 0.15s;
 }
 .sale-marker-inner:hover { transform: scale(1.2); }
 .sale-marker-inner svg { width: 20px; height: 20px; color: white; }
 .sale-marker-arrow {
-  width: 12px; height: 12px;
-  background: linear-gradient(135deg, #059669, #84cc16);
-  transform: rotate(45deg); margin: -7px auto 0;
-  border-right: 3px solid white; border-bottom: 3px solid white;
+  width: 0; height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid #10b981;
+  margin: -2px auto 0;
 }
 .user-marker {
   width: 20px; height: 20px; background: #3b82f6;
@@ -58,6 +59,16 @@ body {
   background: rgba(59,130,246,0.25);
   border-radius: 50%;
   animation: pulseRing 2s ease-out infinite;
+}
+
+/* Urgent (≤2h left) marker pulses red to grab attention */
+.sale-marker-urgent .sale-marker-inner {
+  animation: urgentPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes urgentPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 3px 12px rgba(239,68,68,0.5); }
+  50% { transform: scale(1.12); box-shadow: 0 4px 18px rgba(239,68,68,0.85); }
 }
 
 @keyframes pulseRing {

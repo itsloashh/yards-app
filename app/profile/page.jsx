@@ -294,7 +294,7 @@ function MySales({ activeSales, upcomingSales, pastSales, onClose, onDelete, onV
                     )}
                   </div>
                   {s.address && <p className={`text-xs mt-0.5 ${isPast ? "text-stone-400" : "text-emerald-600"}`}>📍 {s.address}</p>}
-                  <p className={`text-xs mt-0.5 ${isPast ? "text-stone-400" : "text-stone-500"}`}>{s.dateRaw ? formatSaleDate(s.dateRaw, s.startTime, s.endTime, tf) : (s.date || "TBD")}</p>
+                  <p className={`text-xs mt-0.5 ${isPast ? "text-stone-400" : "text-stone-500"}`}>{s.dateRaw ? formatSaleDate(s.dateRaw, s.startTime, s.endTime, tf, s.endDateRaw) : (s.date || "TBD")}</p>
                 </div>
               </div>
 

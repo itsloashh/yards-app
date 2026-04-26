@@ -33,7 +33,7 @@ export default function SaleDetailPage() {
   const isOwner = user && sale.userId === user.id;
   const tf = profile?.time_format === "24h" ? "24h" : "12h";
   const displayDate = sale.dateRaw
-    ? formatSaleDate(sale.dateRaw, sale.startTime, sale.endTime, tf)
+    ? formatSaleDate(sale.dateRaw, sale.startTime, sale.endTime, tf, sale.endDateRaw)
     : (sale.date || "TBD");
 
   // Expiration info

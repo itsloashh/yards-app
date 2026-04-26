@@ -11,7 +11,7 @@ import { formatSaleDate } from "@/lib/timeFormat";
 export default function CreatePage() {
   const router = useRouter();
   const { user, loc, handleCreateSale, setShowAuth, profile } = useApp();
-  const [form, setForm] = useState({ title: "", description: "", address: "", date: "", startTime: "", endTime: "", categories: [], photos: [] });
+  const [form, setForm] = useState({ title: "", description: "", address: "", date: "", endDate: "", startTime: "", endTime: "", categories: [], photos: [] });
   const [errors, setErrors] = useState({});
   const [geoLoading, setGeoLoading] = useState(false);
   const [photoLoading, setPhotoLoading] = useState(false);
@@ -74,27 +74,37 @@ export default function CreatePage() {
     if (!form.title.trim()) e.title = "Title is required";
     if (!form.description.trim()) e.description = "Description is required";
     if (!form.address.trim()) e.address = "Address is required";
-    if (!form.date) e.date = "Date is required";
+    if (!form.date) e.date = "Start date is required";
+    // Validate end date isn't before start date
+    if (form.endDate && form.date && form.endDate < form.date) {
+      e.endDate = "End date can't be before start date";
+    }
     setErrors(e);
     return !Object.keys(e).length;
   };
 
-  // Check if selected date is in the past
-  const isPastDate = form.date && new Date(form.date + "T23:59:59") < new Date();
+  // Check if selected date is in the past — uses endDate if set (multi-day), otherwise start date
+  const effectiveEndDate = form.endDate || form.date;
+  const isPastDate = effectiveEndDate && new Date(effectiveEndDate + "T23:59:59") < new Date();
+  const isMultiDay = form.endDate && form.date && form.endDate !== form.date;
 
   const submit = async () => {
     if (!validate()) return;
     setLoading(true);
     setErrors({});
     const userTimeFormat = profile?.time_format === "24h" ? "24h" : "12h";
+    // For multi-day: the "end date" is when the sale's last day occurs
+    // For single-day: end date == start date
+    const finalEndDate = form.endDate && form.endDate !== form.date ? form.endDate : null;
     const result = await handleCreateSale({
       title: form.title.trim(),
       description: form.description.trim(),
       address: form.address.trim(),
       dateRaw: form.date,
+      endDateRaw: finalEndDate,
       startTime: form.startTime || null,
       endTime: form.endTime || null,
-      date: formatSaleDate(form.date, form.startTime, form.endTime, userTimeFormat),
+      date: formatSaleDate(form.date, form.startTime, form.endTime, userTimeFormat, finalEndDate),
       photos: form.photos,
       tags: form.categories.length ? form.categories : ["General"],
       coords: loc || { lat: 42.3149, lng: -83.0364 },
@@ -180,11 +190,12 @@ export default function CreatePage() {
         )}
       </div>
 
-      {/* Date + Start Time */}
+      {/* Start Date + Start Time */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block font-medium text-stone-800 mb-1.5">Date <span className="text-rose-500">*</span></label>
+          <label className="block font-medium text-stone-800 mb-1.5">Start Date <span className="text-rose-500">*</span></label>
           <input type="date" value={form.date} onChange={e => set("date", e.target.value)}
+            min={new Date().toISOString().split("T")[0]}
             className={`w-full px-3 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm ${errors.date ? "border-rose-300 bg-rose-50" : "border-stone-200"}`} />
           {errors.date && <p className="text-rose-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.date}</p>}
         </div>
@@ -195,15 +206,30 @@ export default function CreatePage() {
         </div>
       </div>
 
-      {/* End Time */}
+      {/* End Date + End Time */}
       <div className="grid grid-cols-2 gap-3">
-        <div />
+        <div>
+          <label className="block font-medium text-stone-800 mb-1.5">End Date <span className="text-stone-400 text-xs font-normal">(optional)</span></label>
+          <input type="date" value={form.endDate} onChange={e => set("endDate", e.target.value)}
+            min={form.date || new Date().toISOString().split("T")[0]}
+            placeholder="Same day"
+            className={`w-full px-3 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm ${errors.endDate ? "border-rose-300 bg-rose-50" : "border-stone-200"}`} />
+          {errors.endDate && <p className="text-rose-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.endDate}</p>}
+        </div>
         <div>
           <label className="block font-medium text-stone-800 mb-1.5">End Time</label>
           <input type="time" value={form.endTime} onChange={e => set("endTime", e.target.value)}
             className="w-full px-3 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
         </div>
       </div>
+
+      {/* Multi-day badge */}
+      {isMultiDay && (
+        <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-blue-800 text-xs">
+          <span className="font-bold">Multi-day sale</span>
+          <span className="text-blue-600">— times apply daily</span>
+        </div>
+      )}
 
       {/* Past date warning */}
       {isPastDate && (

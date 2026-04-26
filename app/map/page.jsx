@@ -6,10 +6,14 @@ import { haversine, fmtDist } from "@/lib/distance";
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
 export default function MapPage() {
-  const { sales, loc, dist, unit } = useApp();
+  const { activeSales, upcomingSales, loc, dist, unit } = useApp();
 
   const useKm = unit === "km";
-  const withDist = sales.map(s => {
+
+  // Combine active + upcoming sales (filter out past sales) — matches home feed behavior
+  const visibleSales = [...activeSales, ...upcomingSales];
+
+  const withDist = visibleSales.map(s => {
     if (!loc) return { ...s, distance: 0, distanceText: "…" };
     const d = haversine(loc.lat, loc.lng, s.coords.lat, s.coords.lng, useKm);
     return { ...s, distance: d, distanceText: fmtDist(d, unit) };

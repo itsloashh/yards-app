@@ -68,23 +68,56 @@ export default function MapView({ sales }) {
     markersRef.current = [];
 
     sales.forEach((sale, i) => {
+      // Determine sale status for pin styling
+      const now = Date.now();
+      const startStr = sale.startTime && /^\d{2}:\d{2}/.test(sale.startTime)
+        ? `${sale.dateRaw}T${sale.startTime}`
+        : `${sale.dateRaw}T00:00`;
+      const startMs = sale.dateRaw ? new Date(startStr).getTime() : null;
+      const isUpcoming = startMs && startMs > now;
+      const minutesLeft = sale.expiresAt ? Math.max(0, Math.floor((sale.expiresAt - now) / 60000)) : null;
+      const isUrgent = !isUpcoming && minutesLeft !== null && minutesLeft <= 120 && minutesLeft > 0;
+      const isMultiDay = sale.endDateRaw && sale.endDateRaw !== sale.dateRaw;
+
+      // Pin color tiers: blue (upcoming) > red pulsing (≤2h left) > green (active)
+      let pinBg = "#10b981"; // emerald-500 (default active)
+      let arrowColor = "#10b981";
+      let pulseClass = "";
+      if (isUpcoming) {
+        pinBg = "#3b82f6"; // blue-500
+        arrowColor = "#3b82f6";
+      } else if (isUrgent) {
+        pinBg = "#ef4444"; // red-500
+        arrowColor = "#ef4444";
+        pulseClass = "sale-marker-urgent";
+      }
+
       const icon = L.divIcon({
-        className: "sale-marker",
+        className: `sale-marker ${pulseClass}`,
         html: `<div style="animation:dropPin 0.4s ease-out ${i * 0.06}s both">
-          <div class="sale-marker-inner">
+          <div class="sale-marker-inner" style="background:${pinBg};">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="1" x2="12" y2="23"></line>
               <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
             </svg>
           </div>
-          <div class="sale-marker-arrow"></div>
+          <div class="sale-marker-arrow" style="border-top-color:${arrowColor};"></div>
         </div>`,
         iconSize: [40, 52], iconAnchor: [20, 52], popupAnchor: [0, -52],
       });
 
       const marker = L.marker([sale.coords.lat, sale.coords.lng], { icon });
 
+      const badgeHtml = isUpcoming
+        ? `<div style="display:inline-block;padding:2px 8px;background:#dbeafe;color:#1e40af;border-radius:99px;font-size:10px;font-weight:700;margin-bottom:6px;">UPCOMING</div>`
+        : isUrgent
+        ? `<div style="display:inline-block;padding:2px 8px;background:#fee2e2;color:#991b1b;border-radius:99px;font-size:10px;font-weight:700;margin-bottom:6px;">${minutesLeft < 60 ? `${minutesLeft}M LEFT` : `${Math.floor(minutesLeft/60)}H LEFT`}</div>`
+        : isMultiDay
+        ? `<div style="display:inline-block;padding:2px 8px;background:#f3e8ff;color:#6b21a8;border-radius:99px;font-size:10px;font-weight:700;margin-bottom:6px;">MULTI-DAY</div>`
+        : "";
+
       const popup = `<div style="padding:12px;min-width:180px;font-family:inherit;">
+        ${badgeHtml}
         <div style="font-weight:700;font-size:13px;color:#1c1917;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;">${sale.title}</div>
         ${sale.address ? `<div style="font-size:11px;color:#059669;margin-bottom:2px;">📍 ${sale.address}</div>` : ""}
         <div style="font-size:11px;color:#059669;font-weight:600;">${sale.distanceText || ""} · ${sale.date}</div>
@@ -94,7 +127,7 @@ export default function MapView({ sales }) {
       </div>`;
 
       marker.bindPopup(popup, { closeButton: false });
-      marker.on("click", () => setSelected(sale));
+      marker.on("click", () => setSelected({ ...sale, isUpcoming, isUrgent, isMultiDay, minutesLeft }));
       marker.addTo(map);
       markersRef.current.push(marker);
     });
@@ -134,7 +167,20 @@ export default function MapView({ sales }) {
           <div className="flex gap-3 items-start cursor-pointer" onClick={() => router.push(`/sale/${selected.id}`)}>
             <img src={selected.photos?.[0]} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" />
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-stone-800 text-sm truncate">{selected.title}</h3>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {selected.isUpcoming && (
+                  <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[9px] font-bold uppercase tracking-wide">Upcoming</span>
+                )}
+                {selected.isUrgent && (
+                  <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded text-[9px] font-bold uppercase tracking-wide animate-pulse">
+                    {selected.minutesLeft < 60 ? `${selected.minutesLeft}m left` : `${Math.floor(selected.minutesLeft/60)}h left`}
+                  </span>
+                )}
+                {selected.isMultiDay && !selected.isUpcoming && !selected.isUrgent && (
+                  <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-[9px] font-bold uppercase tracking-wide">Multi-day</span>
+                )}
+                <h3 className="font-bold text-stone-800 text-sm truncate">{selected.title}</h3>
+              </div>
               {selected.address && <p className="text-yard-600 text-xs font-medium mt-0.5">📍 {selected.address}</p>}
               <p className="text-stone-500 text-xs mt-0.5">{selected.distanceText} · {selected.date}</p>
             </div>

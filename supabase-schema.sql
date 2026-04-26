@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS sales (
   address TEXT DEFAULT '',
   date_display TEXT DEFAULT 'TBD',
   date_raw DATE,
+  end_date_raw DATE,
   start_time TEXT,
   end_time TEXT,
   tags TEXT[] DEFAULT '{}',

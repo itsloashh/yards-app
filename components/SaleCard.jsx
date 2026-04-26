@@ -39,12 +39,15 @@ export default function SaleCard({ sale, delay = 0 }) {
       })()
     : null;
   const isUpcoming = saleStartMs && saleStartMs > now;
-  const hoursLeft = sale.expiresAt ? Math.max(0, Math.floor((sale.expiresAt - now) / 3600000)) : null;
-  const isEnding = hoursLeft !== null && hoursLeft < 24 && hoursLeft > 0 && !isUpcoming;
+  const minutesLeft = sale.expiresAt ? Math.max(0, Math.floor((sale.expiresAt - now) / 60000)) : null;
+  const hoursLeft = minutesLeft !== null ? Math.floor(minutesLeft / 60) : null;
+  const isUrgent = minutesLeft !== null && minutesLeft <= 120 && minutesLeft > 0 && !isUpcoming;
+  const isEnding = hoursLeft !== null && hoursLeft < 24 && hoursLeft > 0 && !isUpcoming && !isUrgent;
+  const isMultiDay = sale.endDateRaw && sale.endDateRaw !== sale.dateRaw;
 
   // Dynamically format the date using the user's time preference
   const displayDate = sale.dateRaw
-    ? formatSaleDate(sale.dateRaw, sale.startTime, sale.endTime, tf)
+    ? formatSaleDate(sale.dateRaw, sale.startTime, sale.endTime, tf, sale.endDateRaw)
     : (sale.date || "TBD");
 
   return (
@@ -67,6 +70,17 @@ export default function SaleCard({ sale, delay = 0 }) {
         {isUpcoming && (
           <div className="absolute top-3 left-3 px-2.5 py-1 bg-blue-500 text-white text-[10px] font-bold rounded-full shadow flex items-center gap-1">
             <Calendar className="w-3 h-3" /> Upcoming
+          </div>
+        )}
+        {isMultiDay && !isUpcoming && (
+          <div className="absolute top-3 left-3 px-2.5 py-1 bg-purple-500 text-white text-[10px] font-bold rounded-full shadow flex items-center gap-1">
+            <Calendar className="w-3 h-3" /> Multi-day
+          </div>
+        )}
+        {isUrgent && (
+          <div className="absolute bottom-3 right-3 px-2.5 py-1 bg-rose-500 text-white text-[10px] font-bold rounded-full shadow flex items-center gap-1 animate-pulse">
+            <Clock className="w-3 h-3" />
+            {minutesLeft < 60 ? `${minutesLeft}m left` : `${hoursLeft}h left`}
           </div>
         )}
         {isEnding && (
