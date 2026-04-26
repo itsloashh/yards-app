@@ -32,7 +32,7 @@ export default function WelcomeModal() {
   const [dontShow, setDontShow] = useState(false);
 
   useEffect(() => {
-    // Wait for splash to finish (~2.0s) plus a small delay before showing
+    // Wait for splash to finish (~2.0s) plus a tiny breath before showing
     const showTimer = setTimeout(() => {
       try {
         const dismissedVersion = localStorage.getItem(STORAGE_KEY);
@@ -44,7 +44,7 @@ export default function WelcomeModal() {
         // localStorage might be disabled (private browsing) — show anyway
         setOpen(true);
       }
-    }, 2600);
+    }, 2200);
     return () => clearTimeout(showTimer);
   }, []);
 
@@ -91,7 +91,7 @@ export default function WelcomeModal() {
             <img
               src="/logo-sign.png"
               alt="Yard$"
-              className="w-20 h-20 object-contain mb-1 drop-shadow-md"
+              className="w-32 h-32 object-contain mb-1 drop-shadow-md"
             />
             <h2 className="text-2xl font-bold font-display">{ANNOUNCEMENT.title}</h2>
             <p className="text-white/85 text-sm mt-1">{ANNOUNCEMENT.subtitle}</p>

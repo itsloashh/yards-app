@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Heart, Clock, MapPin, Navigation, Star, Phone, Mail, MessageCircle, Trash2, Edit, Share2, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart, Clock, MapPin, Navigation, Star, Phone, Mail, MessageCircle, Trash2, Edit, Share2, AlertCircle } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { haversine, fmtDist } from "@/lib/distance";
 import { formatSaleDate } from "@/lib/timeFormat";
@@ -13,6 +13,8 @@ export default function SaleDetailPage() {
   const [photo, setPhoto] = useState(0);
   const [showContact, setShowContact] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
 
   const sale = sales.find(s => s.id === id || s.id === parseInt(id));
 
@@ -71,14 +73,56 @@ export default function SaleDetailPage() {
         </div>
       )}
 
-      {/* Photo gallery */}
-      <div className="relative h-72 bg-stone-200">
-        <img src={sale.photos?.[photo]} alt="" className="w-full h-full object-cover" />
-        <button onClick={() => router.back()}
-          className="absolute top-4 left-4 w-10 h-10 bg-black/40 backdrop-blur rounded-full flex items-center justify-center">
+      {/* Photo gallery — swipeable on touch, arrow buttons on desktop */}
+      <div
+        className="relative h-72 bg-stone-200 overflow-hidden select-none"
+        onTouchStart={(e) => {
+          touchStartX.current = e.touches[0].clientX;
+          touchStartY.current = e.touches[0].clientY;
+        }}
+        onTouchEnd={(e) => {
+          const dx = e.changedTouches[0].clientX - (touchStartX.current ?? 0);
+          const dy = e.changedTouches[0].clientY - (touchStartY.current ?? 0);
+          // Only trigger swipe if horizontal motion dominates (avoid hijacking vertical scroll)
+          if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+            const total = sale.photos?.length || 0;
+            if (dx < 0 && photo < total - 1) setPhoto(photo + 1);
+            if (dx > 0 && photo > 0) setPhoto(photo - 1);
+          }
+          touchStartX.current = null;
+          touchStartY.current = null;
+        }}
+      >
+        {/* Sliding strip of photos for smooth transitions */}
+        {sale.photos?.length > 0 ? (
+          <div
+            className="absolute inset-0 flex transition-transform duration-300 ease-out"
+            style={{ transform: `translateX(-${photo * 100}%)` }}
+          >
+            {sale.photos.map((src, i) => (
+              <img
+                key={i}
+                src={src}
+                alt=""
+                draggable={false}
+                className="w-full h-full object-cover shrink-0"
+                style={{ width: "100%" }}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-emerald-400 to-lime-500 flex items-center justify-center">
+            <span className="text-white/80 text-5xl">🏷️</span>
+          </div>
+        )}
+
+        <button
+          onClick={() => router.back()}
+          className="absolute top-4 left-4 w-10 h-10 bg-black/40 backdrop-blur rounded-full flex items-center justify-center z-10"
+        >
           <ChevronLeft className="w-6 h-6 text-white" />
         </button>
-        <div className="absolute top-4 right-4 flex gap-2">
+        <div className="absolute top-4 right-4 flex gap-2 z-10">
           <button onClick={shareSale}
             className="w-10 h-10 bg-black/40 backdrop-blur rounded-full flex items-center justify-center">
             <Share2 className="w-5 h-5 text-white" />
@@ -88,8 +132,33 @@ export default function SaleDetailPage() {
             <Heart className={`w-5 h-5 ${saved ? "fill-current" : ""}`} />
           </button>
         </div>
+
+        {/* Left/right arrow buttons — only visible when there are multiple photos */}
         {(sale.photos?.length || 0) > 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+          <>
+            {photo > 0 && (
+              <button
+                onClick={() => setPhoto(photo - 1)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 backdrop-blur rounded-full flex items-center justify-center hover:bg-black/55 transition z-10"
+                aria-label="Previous photo"
+              >
+                <ChevronLeft className="w-5 h-5 text-white" />
+              </button>
+            )}
+            {photo < (sale.photos.length - 1) && (
+              <button
+                onClick={() => setPhoto(photo + 1)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 backdrop-blur rounded-full flex items-center justify-center hover:bg-black/55 transition z-10"
+                aria-label="Next photo"
+              >
+                <ChevronRight className="w-5 h-5 text-white" />
+              </button>
+            )}
+          </>
+        )}
+
+        {(sale.photos?.length || 0) > 1 && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
             {sale.photos.map((_, i) => (
               <button key={i} onClick={() => setPhoto(i)}
                 className={`h-2 rounded-full transition-all ${photo === i ? "bg-white w-6" : "bg-white/50 w-2"}`} />
@@ -98,7 +167,7 @@ export default function SaleDetailPage() {
         )}
         {/* Time remaining badge */}
         {hoursLeft !== null && !isExpired && hoursLeft < 48 && (
-          <div className="absolute bottom-4 left-4 px-3 py-1 bg-amber-500 text-white text-xs font-bold rounded-full shadow">
+          <div className="absolute bottom-4 left-4 px-3 py-1 bg-amber-500 text-white text-xs font-bold rounded-full shadow z-10">
             {hoursLeft < 1 ? "Ending soon!" : `${hoursLeft}h left`}
           </div>
         )}
