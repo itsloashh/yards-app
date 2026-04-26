@@ -1,10 +1,10 @@
 "use client";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Camera, X, MapPin, RefreshCw, Crosshair, Star, ChevronDown, AlertCircle, Loader2, CalendarX2 } from "lucide-react";
+import { ChevronLeft, Camera, X, MapPin, RefreshCw, Crosshair, Star, ChevronDown, AlertCircle, Loader2, CalendarX2, Check } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { CATEGORIES } from "@/lib/constants";
-import { reverseGeocode } from "@/lib/geocode";
+import { reverseGeocode, geocodeAddress } from "@/lib/geocode";
 import { compressImage } from "@/lib/imageUtils";
 import { formatSaleDate } from "@/lib/timeFormat";
 
@@ -20,6 +20,11 @@ export default function CreatePage() {
   const [newItem, setNewItem] = useState({ name: "", price: "" });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Tracks where the lat/lng for the sale came from:
+  //   "current" → user clicked "Use my location" (use loc coords directly)
+  //   "address" → user typed/edited the address (need to geocode it before submitting)
+  const [coordsSource, setCoordsSource] = useState("address");
+  const [storedCurrentCoords, setStoredCurrentCoords] = useState(null);
   const fileRef = useRef(null);
 
   if (!user) {
@@ -59,8 +64,18 @@ export default function CreatePage() {
     if (!loc) return;
     setGeoLoading(true);
     const geo = await reverseGeocode(loc.lat, loc.lng);
-    set("address", geo.full || geo.short);
+    // Set address WITHOUT marking coords as stale (use special bypass)
+    setForm(prev => ({ ...prev, address: geo.full || geo.short }));
+    setStoredCurrentCoords({ lat: loc.lat, lng: loc.lng });
+    setCoordsSource("current");
     setGeoLoading(false);
+  };
+
+  // Custom address input handler that marks coords as needing geocoding
+  const handleAddressChange = (e) => {
+    set("address", e.target.value);
+    // User is typing/editing — coords need to come from geocoding the address, not their device
+    setCoordsSource("address");
   };
 
   const addItem = () => {
@@ -92,6 +107,27 @@ export default function CreatePage() {
     if (!validate()) return;
     setLoading(true);
     setErrors({});
+
+    // Resolve coordinates for the sale's pin location.
+    // If user clicked "Use my location", we already have their device coords stored.
+    // Otherwise, forward-geocode the typed address to get the actual sale location.
+    let saleCoords;
+    if (coordsSource === "current" && storedCurrentCoords) {
+      saleCoords = storedCurrentCoords;
+    } else {
+      // Geocode the typed address
+      const geo = await geocodeAddress(form.address.trim());
+      if (geo.success) {
+        saleCoords = { lat: geo.lat, lng: geo.lng };
+      } else {
+        // Address couldn't be geocoded — show error, don't fall back to device location
+        setLoading(false);
+        setErrors({ address: "We couldn't find this address. Please double-check it or use 'Use my current location'." });
+        setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
+        return;
+      }
+    }
+
     const userTimeFormat = profile?.time_format === "24h" ? "24h" : "12h";
     // For multi-day: the "end date" is when the sale's last day occurs
     // For single-day: end date == start date
@@ -107,7 +143,7 @@ export default function CreatePage() {
       date: formatSaleDate(form.date, form.startTime, form.endTime, userTimeFormat, finalEndDate),
       photos: form.photos,
       tags: form.categories.length ? form.categories : ["General"],
-      coords: loc || { lat: 42.3149, lng: -83.0364 },
+      coords: saleCoords,
       featuredItems: featuredItems.length ? featuredItems : undefined,
     });
     setLoading(false);
@@ -177,17 +213,27 @@ export default function CreatePage() {
         <div className="relative">
           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
           <input type="text" placeholder="Enter your address" value={form.address}
-            onChange={e => set("address", e.target.value)}
+            onChange={handleAddressChange}
             className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm ${errors.address ? "border-rose-300 bg-rose-50" : "border-stone-200"}`} />
         </div>
         {errors.address && <p className="text-rose-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.address}</p>}
-        {loc && (
-          <button onClick={useMyLocation} disabled={geoLoading}
-            className="mt-2 text-emerald-600 text-sm font-medium flex items-center gap-1 hover:underline disabled:opacity-50">
-            {geoLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Crosshair className="w-4 h-4" />}
-            {geoLoading ? "Getting address…" : "Use my current location"}
-          </button>
-        )}
+        <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
+          {loc && (
+            <button type="button" onClick={useMyLocation} disabled={geoLoading}
+              className="text-emerald-600 text-sm font-medium flex items-center gap-1 hover:underline disabled:opacity-50">
+              {geoLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Crosshair className="w-4 h-4" />}
+              {geoLoading ? "Getting address…" : "Use my current location"}
+            </button>
+          )}
+          {coordsSource === "current" && form.address && (
+            <span className="text-emerald-600 text-xs font-medium flex items-center gap-1">
+              <Check className="w-3 h-3" /> Pinned to your location
+            </span>
+          )}
+        </div>
+        <p className="text-stone-400 text-[11px] mt-1.5">
+          The map pin and directions will use the address you enter here — make sure it's where the sale will actually take place.
+        </p>
       </div>
 
       {/* Start Date + Start Time */}
