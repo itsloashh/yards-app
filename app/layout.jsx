@@ -7,6 +7,7 @@ import BottomNav from "@/components/BottomNav";
 import Header from "@/components/Header";
 import AuthModal from "@/components/AuthModal";
 import SplashScreen from "@/components/SplashScreen";
+import WelcomeModal from "@/components/WelcomeModal";
 
 const body = Outfit({ subsets: ["latin"], variable: "--font-body", weight: ["300", "400", "500", "600", "700", "800"] });
 const display = Fraunces({ subsets: ["latin"], variable: "--font-display", weight: ["700", "800", "900"] });
@@ -72,6 +73,7 @@ export default function RootLayout({ children }) {
               </main>
               <BottomNav />
               <AuthModal />
+              <WelcomeModal />
             </div>
           </AppProvider>
         </PostHogProvider>
