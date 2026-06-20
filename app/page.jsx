@@ -8,15 +8,21 @@ export default function HomePage() {
   const { activeSales, upcomingSales, loc, dist, unit, sortBy, setSortBy, authLoading, salesLoading, sales, connOk, salesLoadError } = useApp();
 
   const useKm = unit === "km";
+  const showAll = !isFinite(dist); // "Anywhere" selected
 
   const addDist = (list) => list.map(s => {
-    if (!loc) return { ...s, distance: 0, distanceText: "…" };
+    if (!loc || !s.coords || typeof s.coords.lat !== "number" || typeof s.coords.lng !== "number") {
+      return { ...s, distance: showAll ? 0 : Infinity, distanceText: loc ? "—" : "…" };
+    }
     const d = haversine(loc.lat, loc.lng, s.coords.lat, s.coords.lng, useKm);
-    return { ...s, distance: d, distanceText: fmtDist(d, unit) };
+    // Guard against NaN from bad coordinates
+    const safeD = isFinite(d) ? d : (showAll ? 0 : Infinity);
+    return { ...s, distance: safeD, distanceText: isFinite(d) ? fmtDist(d, unit) : "—" };
   });
 
   const distInUnit = useKm ? dist * 1.60934 : dist;
-  const filterByDist = (list) => list.filter(s => s.distance <= distInUnit);
+  // When "Anywhere" is selected, show every sale regardless of distance (even ones with unknown coords)
+  const filterByDist = (list) => showAll ? list : list.filter(s => s.distance <= distInUnit);
 
   let activeFiltered = filterByDist(addDist(activeSales));
   let upcomingFiltered = filterByDist(addDist(upcomingSales));
@@ -98,7 +104,7 @@ export default function HomePage() {
       <ConnectionBanner />
       <div className="p-4 space-y-3 pb-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-stone-800 font-display">Nearby Sales</h2>
+          <h2 className="text-lg font-bold text-stone-800 font-display">{showAll ? "All Sales" : "Nearby Sales"}</h2>
           <div className="flex items-center gap-2">
             <span className="text-[12px] text-stone-400">{totalVisible} found</span>
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
