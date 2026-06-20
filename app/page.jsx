@@ -83,7 +83,7 @@ export default function HomePage() {
             {sales.length === 0 ? "Be the first to post a yard sale in your area!" : "Try expanding your distance filter or check back later."}
           </p>
           <p className="text-stone-400 text-xs">Tap the <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-white text-[10px] font-bold" style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>+</span> button below to get started.</p>
-          {sales.length > 0 && (
+          {sales.length > 0 && isFinite(dist) && (
             <div className="mt-6 px-4 py-2 bg-stone-50 rounded-xl text-xs text-stone-500">
               {sales.length} sale{sales.length !== 1 ? "s" : ""} exist but outside your {distLabel(dist, unit)} range ↑
             </div>

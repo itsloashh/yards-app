@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Heart, Clock, MapPin, Navigation, Star, Phone, Mail, MessageCircle, Trash2, Edit, Share2, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart, Clock, MapPin, Navigation, Star, Phone, Mail, MessageCircle, Trash2, Edit, Share2, AlertCircle, Eye } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { haversine, fmtDist } from "@/lib/distance";
 import { formatSaleDate } from "@/lib/timeFormat";
@@ -9,14 +9,23 @@ import { formatSaleDate } from "@/lib/timeFormat";
 export default function SaleDetailPage() {
   const router = useRouter();
   const { id } = useParams();
-  const { sales, loc, unit, toggleSaved, isSaved, user, handleDeleteSale, profile } = useApp();
+  const { sales, loc, unit, toggleSaved, isSaved, user, handleDeleteSale, incrementSaleViews, profile } = useApp();
   const [photo, setPhoto] = useState(0);
   const [showContact, setShowContact] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
+  const viewTracked = useRef(false);
 
   const sale = sales.find(s => s.id === id || s.id === parseInt(id));
+
+  // Track a view once per page visit (skips owner's own views, handled in the context)
+  useEffect(() => {
+    if (sale && !viewTracked.current) {
+      viewTracked.current = true;
+      incrementSaleViews(sale.id, sale);
+    }
+  }, [sale]);
 
   if (!sale) {
     return (
@@ -249,12 +258,24 @@ export default function SaleDetailPage() {
 
         {/* Owner actions */}
         {isOwner && (
-          <div className="flex gap-2">
-            <button onClick={() => setConfirmDelete(true)}
-              className="flex-1 py-3 bg-rose-50 border border-rose-200 text-rose-600 font-semibold rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-rose-100 transition">
-              <Trash2 className="w-4 h-4" /> Delete Sale
-            </button>
-          </div>
+          <>
+            {/* View count — owner only */}
+            <div className="flex items-center justify-center gap-2 py-2.5 bg-stone-50 rounded-xl text-stone-600 text-sm">
+              <Eye className="w-4 h-4 text-emerald-600" />
+              <span className="font-bold text-stone-800">{(sale.viewCount || 0).toLocaleString()}</span>
+              <span>{sale.viewCount === 1 ? "view" : "views"}</span>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => router.push(`/create?edit=${sale.id}`)}
+                className="flex-1 py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-emerald-100 transition">
+                <Edit className="w-4 h-4" /> Edit Sale
+              </button>
+              <button onClick={() => setConfirmDelete(true)}
+                className="flex-1 py-3 bg-rose-50 border border-rose-200 text-rose-600 font-semibold rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-rose-100 transition">
+                <Trash2 className="w-4 h-4" /> Delete Sale
+              </button>
+            </div>
+          </>
         )}
 
         {/* Delete confirmation */}

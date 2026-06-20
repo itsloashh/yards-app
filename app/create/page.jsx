@@ -1,6 +1,6 @@
 "use client";
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Camera, X, MapPin, RefreshCw, Crosshair, Star, ChevronDown, AlertCircle, Loader2, CalendarX2, Check } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { CATEGORIES } from "@/lib/constants";
@@ -9,8 +9,18 @@ import { compressImage } from "@/lib/imageUtils";
 import { formatSaleDate } from "@/lib/timeFormat";
 
 export default function CreatePage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center p-12" style={{ minHeight: "50vh" }}><Loader2 className="w-8 h-8 text-emerald-500 animate-spin" /></div>}>
+      <CreatePageInner />
+    </Suspense>
+  );
+}
+
+function CreatePageInner() {
   const router = useRouter();
-  const { user, loc, handleCreateSale, setShowAuth, profile } = useApp();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
+  const { user, loc, handleCreateSale, handleUpdateSale, setShowAuth, profile, sales } = useApp();
   const [form, setForm] = useState({ title: "", description: "", address: "", date: "", endDate: "", startTime: "", endTime: "", categories: [], photos: [] });
   const [errors, setErrors] = useState({});
   const [geoLoading, setGeoLoading] = useState(false);
@@ -25,7 +35,33 @@ export default function CreatePage() {
   //   "address" → user typed/edited the address (need to geocode it before submitting)
   const [coordsSource, setCoordsSource] = useState("address");
   const [storedCurrentCoords, setStoredCurrentCoords] = useState(null);
+  const [editLoaded, setEditLoaded] = useState(false);
   const fileRef = useRef(null);
+
+  const isEditMode = !!editId;
+  const editingSale = editId ? sales.find(s => s.id === editId) : null;
+
+  // Pre-fill the form when editing an existing sale
+  useEffect(() => {
+    if (editId && editingSale && !editLoaded) {
+      setForm({
+        title: editingSale.title || "",
+        description: editingSale.description || "",
+        address: editingSale.address || "",
+        date: editingSale.dateRaw || "",
+        endDate: editingSale.endDateRaw || "",
+        startTime: editingSale.startTime || "",
+        endTime: editingSale.endTime || "",
+        categories: editingSale.tags || [],
+        photos: editingSale.photos || [],
+      });
+      setFeaturedItems(editingSale.featuredItems || []);
+      // Existing sale already has coords — keep them unless user changes the address
+      setStoredCurrentCoords(editingSale.coords);
+      setCoordsSource("current");
+      setEditLoaded(true);
+    }
+  }, [editId, editingSale, editLoaded]);
 
   if (!user) {
     return (
@@ -132,7 +168,7 @@ export default function CreatePage() {
     // For multi-day: the "end date" is when the sale's last day occurs
     // For single-day: end date == start date
     const finalEndDate = form.endDate && form.endDate !== form.date ? form.endDate : null;
-    const result = await handleCreateSale({
+    const salePayload = {
       title: form.title.trim(),
       description: form.description.trim(),
       address: form.address.trim(),
@@ -145,7 +181,11 @@ export default function CreatePage() {
       tags: form.categories.length ? form.categories : ["General"],
       coords: saleCoords,
       featuredItems: featuredItems.length ? featuredItems : undefined,
-    });
+    };
+
+    const result = isEditMode
+      ? await handleUpdateSale(editId, salePayload)
+      : await handleCreateSale(salePayload);
     setLoading(false);
     if (result?.error) {
       setErrors({ submit: result.error });
@@ -154,17 +194,17 @@ export default function CreatePage() {
       return;
     }
     setSubmitted(true);
-    setTimeout(() => router.push("/"), 1500);
+    setTimeout(() => router.push(isEditMode ? `/sale/${editId}` : "/"), 1500);
   };
 
   if (submitted) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center" style={{ minHeight: "50vh" }}>
         <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-          <span className="text-4xl">🎉</span>
+          <span className="text-4xl">{isEditMode ? "✅" : "🎉"}</span>
         </div>
-        <h3 className="text-xl font-bold text-stone-800 mb-2 font-display">Sale Posted!</h3>
-        <p className="text-stone-500 text-sm">Your yard sale is now live. Redirecting…</p>
+        <h3 className="text-xl font-bold text-stone-800 mb-2 font-display">{isEditMode ? "Sale Updated!" : "Sale Posted!"}</h3>
+        <p className="text-stone-500 text-sm">{isEditMode ? "Your changes are live. Redirecting…" : "Your yard sale is now live. Redirecting…"}</p>
       </div>
     );
   }
@@ -173,7 +213,7 @@ export default function CreatePage() {
     <div className="p-5 space-y-5 pb-8">
       <div className="flex items-center gap-3 -mx-1">
         <button onClick={() => router.back()} className="p-2 hover:bg-stone-100 rounded-full"><ChevronLeft className="w-6 h-6 text-stone-600" /></button>
-        <h1 className="text-xl font-bold text-stone-800 font-display">Post a Yard Sale</h1>
+        <h1 className="text-xl font-bold text-stone-800 font-display">{isEditMode ? "Edit Sale" : "Post a Yard Sale"}</h1>
       </div>
 
       {/* Photos */}
@@ -340,7 +380,7 @@ export default function CreatePage() {
         className="w-full py-4 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2 disabled:opacity-70"
         style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>
         {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-        {loading ? "Posting…" : "Post Your Sale"}
+        {loading ? (isEditMode ? "Saving…" : "Posting…") : (isEditMode ? "Save Changes" : "Post Your Sale")}
       </button>
     </div>
   );

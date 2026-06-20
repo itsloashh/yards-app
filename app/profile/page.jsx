@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, Calendar, CheckCircle, MessageCircle } from "lucide-react";
+import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, Calendar, CheckCircle, MessageCircle, Edit } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { AVATAR_COLORS } from "@/lib/constants";
 import { formatSaleDate } from "@/lib/timeFormat";
@@ -215,6 +215,7 @@ function EditProfile({ profile, onSave, onClose }) {
 
 function MySales({ activeSales, upcomingSales, pastSales, onClose, onDelete, onView }) {
   const { profile } = useApp();
+  const router = useRouter();
   const tf = profile?.time_format === "24h" ? "24h" : "12h";
   const [tab, setTab] = useState("active");
   const [deleting, setDeleting] = useState(null);
@@ -295,12 +296,21 @@ function MySales({ activeSales, upcomingSales, pastSales, onClose, onDelete, onV
                   </div>
                   {s.address && <p className={`text-xs mt-0.5 ${isPast ? "text-stone-400" : "text-emerald-600"}`}>📍 {s.address}</p>}
                   <p className={`text-xs mt-0.5 ${isPast ? "text-stone-400" : "text-stone-500"}`}>{s.dateRaw ? formatSaleDate(s.dateRaw, s.startTime, s.endTime, tf, s.endDateRaw) : (s.date || "TBD")}</p>
+                  <p className="text-xs mt-0.5 text-stone-400 flex items-center gap-1">
+                    <Eye className="w-3 h-3" /> {(s.viewCount || 0).toLocaleString()} {s.viewCount === 1 ? "view" : "views"}
+                  </p>
                 </div>
               </div>
 
-              <div className="px-3 pb-3">
+              <div className="px-3 pb-3 flex gap-2">
+                {!isPast && (
+                  <button onClick={() => router.push(`/create?edit=${s.id}`)}
+                    className="flex-1 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 font-medium rounded-lg text-xs flex items-center justify-center gap-1 hover:bg-emerald-100 transition">
+                    <Edit className="w-3.5 h-3.5" /> Edit
+                  </button>
+                )}
                 <button onClick={() => setDeleting(deleting === s.id ? null : s.id)}
-                  className="w-full py-2 bg-rose-50 border border-rose-200 text-rose-600 font-medium rounded-lg text-xs flex items-center justify-center gap-1 hover:bg-rose-100 transition">
+                  className="flex-1 py-2 bg-rose-50 border border-rose-200 text-rose-600 font-medium rounded-lg text-xs flex items-center justify-center gap-1 hover:bg-rose-100 transition">
                   <Trash2 className="w-3.5 h-3.5" /> Delete
                 </button>
               </div>
