@@ -43,6 +43,8 @@ CREATE TABLE IF NOT EXISTS sales (
   lng DOUBLE PRECISION NOT NULL,
   expires_at TIMESTAMPTZ,
   view_count INTEGER DEFAULT 0,
+  boosted_until TIMESTAMPTZ,
+  boost_package TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

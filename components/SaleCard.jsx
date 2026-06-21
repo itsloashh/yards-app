@@ -1,8 +1,9 @@
 "use client";
-import { Heart, Clock, MapPin, Calendar } from "lucide-react";
+import { Heart, Clock, MapPin, Calendar, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { formatSaleDate, parseLocalDate } from "@/lib/timeFormat";
+import { isBoosted } from "@/lib/boostPackages";
 
 // Placeholder gradient when no photo exists
 function PhotoPlaceholder({ title }) {
@@ -44,6 +45,7 @@ export default function SaleCard({ sale, delay = 0 }) {
   const isUrgent = minutesLeft !== null && minutesLeft <= 120 && minutesLeft > 0 && !isUpcoming;
   const isEnding = hoursLeft !== null && hoursLeft < 24 && hoursLeft > 0 && !isUpcoming && !isUrgent;
   const isMultiDay = sale.endDateRaw && sale.endDateRaw !== sale.dateRaw;
+  const boosted = isBoosted(sale.boostedUntil);
 
   // Dynamically format the date using the user's time preference
   const displayDate = sale.dateRaw
@@ -52,7 +54,7 @@ export default function SaleCard({ sale, delay = 0 }) {
 
   return (
     <div onClick={() => router.push(`/sale/${sale.id}`)}
-      className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition-all cursor-pointer border border-stone-100"
+      className={`bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition-all cursor-pointer ${boosted ? "border-2 border-amber-400 shadow-amber-100" : "border border-stone-100"}`}
       style={{ animation: `fadeUp 0.4s ease-out ${delay}s both` }}>
       <div className="relative h-44 bg-stone-200">
         {hasPhoto
@@ -67,12 +69,17 @@ export default function SaleCard({ sale, delay = 0 }) {
             {sale.distanceText}
           </div>
         )}
-        {isUpcoming && (
+        {boosted && (
+          <div className="absolute top-3 left-3 px-2.5 py-1 text-white text-[10px] font-bold rounded-full shadow flex items-center gap-1" style={{ background: "linear-gradient(135deg, #d97706, #f59e0b)" }}>
+            <Sparkles className="w-3 h-3" /> Featured
+          </div>
+        )}
+        {isUpcoming && !boosted && (
           <div className="absolute top-3 left-3 px-2.5 py-1 bg-blue-500 text-white text-[10px] font-bold rounded-full shadow flex items-center gap-1">
             <Calendar className="w-3 h-3" /> Upcoming
           </div>
         )}
-        {isMultiDay && !isUpcoming && (
+        {isMultiDay && !isUpcoming && !boosted && (
           <div className="absolute top-3 left-3 px-2.5 py-1 bg-purple-500 text-white text-[10px] font-bold rounded-full shadow flex items-center gap-1">
             <Calendar className="w-3 h-3" /> Multi-day
           </div>

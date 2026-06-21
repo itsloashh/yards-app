@@ -1,21 +1,44 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Heart, Clock, MapPin, Navigation, Star, Phone, Mail, MessageCircle, Trash2, Edit, Share2, AlertCircle, Eye } from "lucide-react";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronRight, Heart, Clock, MapPin, Navigation, Star, Phone, Mail, MessageCircle, Trash2, Edit, Share2, AlertCircle, Eye, Rocket, Sparkles, Loader2 } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { haversine, fmtDist } from "@/lib/distance";
 import { formatSaleDate } from "@/lib/timeFormat";
+import { isBoosted } from "@/lib/boostPackages";
+import BoostModal from "@/components/BoostModal";
 
 export default function SaleDetailPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center" style={{ minHeight: "50vh" }}><Loader2 className="w-8 h-8 text-emerald-500 animate-spin" /></div>}>
+      <SaleDetailInner />
+    </Suspense>
+  );
+}
+
+function SaleDetailInner() {
   const router = useRouter();
   const { id } = useParams();
+  const searchParams = useSearchParams();
   const { sales, loc, unit, toggleSaved, isSaved, user, handleDeleteSale, incrementSaleViews, profile } = useApp();
   const [photo, setPhoto] = useState(0);
   const [showContact, setShowContact] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showBoost, setShowBoost] = useState(false);
+  const [boostBanner, setBoostBanner] = useState(null); // "success" | "cancelled" | null
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
   const viewTracked = useRef(false);
+
+  // Read ?boost=success / ?boost=cancelled from the Stripe redirect
+  useEffect(() => {
+    const b = searchParams.get("boost");
+    if (b === "success" || b === "cancelled") {
+      setBoostBanner(b);
+      // Clean the URL so a refresh doesn't re-show it
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [searchParams]);
 
   const sale = sales.find(s => s.id === id || s.id === parseInt(id));
 
@@ -42,6 +65,7 @@ export default function SaleDetailPage() {
   const distText = loc ? fmtDist(distance, unit) : "";
   const saved = isSaved(sale.id);
   const isOwner = user && sale.userId === user.id;
+  const saleBoosted = isBoosted(sale.boostedUntil);
   const tf = profile?.time_format === "24h" ? "24h" : "12h";
   const displayDate = sale.dateRaw
     ? formatSaleDate(sale.dateRaw, sale.startTime, sale.endTime, tf, sale.endDateRaw)
@@ -74,6 +98,20 @@ export default function SaleDetailPage() {
 
   return (
     <div>
+      {/* Boost result banner */}
+      {boostBanner === "success" && (
+        <div className="px-4 py-3 flex items-center gap-2 text-white text-sm font-semibold" style={{ background: "linear-gradient(135deg, #d97706, #f59e0b)" }}>
+          <Sparkles className="w-4 h-4 shrink-0" />
+          Payment successful! Your sale is now boosted and featured.
+        </div>
+      )}
+      {boostBanner === "cancelled" && (
+        <div className="bg-stone-100 border-b border-stone-200 px-4 py-2.5 flex items-center gap-2 text-stone-600 text-sm">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          Boost checkout cancelled — no charge was made.
+        </div>
+      )}
+
       {/* Expired banner */}
       {isExpired && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center gap-2 text-amber-700 text-sm">
@@ -180,6 +218,12 @@ export default function SaleDetailPage() {
             {hoursLeft < 1 ? "Ending soon!" : `${hoursLeft}h left`}
           </div>
         )}
+        {/* Featured (boosted) badge */}
+        {saleBoosted && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1.5 text-white text-xs font-bold rounded-full shadow z-10 flex items-center gap-1.5" style={{ background: "linear-gradient(135deg, #d97706, #f59e0b)" }}>
+            <Sparkles className="w-3.5 h-3.5" /> Featured
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -265,6 +309,21 @@ export default function SaleDetailPage() {
               <span className="font-bold text-stone-800">{(sale.viewCount || 0).toLocaleString()}</span>
               <span>{sale.viewCount === 1 ? "view" : "views"}</span>
             </div>
+
+            {/* Boost status / button */}
+            {saleBoosted ? (
+              <div className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-amber-800 border border-amber-300" style={{ background: "linear-gradient(135deg, #fffbeb, #fef3c7)" }}>
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                Boosted — featured until {new Date(sale.boostedUntil).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+              </div>
+            ) : (
+              <button onClick={() => setShowBoost(true)}
+                className="w-full py-3.5 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2"
+                style={{ background: "linear-gradient(135deg, #d97706, #f59e0b)" }}>
+                <Rocket className="w-5 h-5" /> Boost This Sale
+              </button>
+            )}
+
             <div className="flex gap-2">
               <button onClick={() => router.push(`/create?edit=${sale.id}`)}
                 className="flex-1 py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-emerald-100 transition">
@@ -321,6 +380,11 @@ export default function SaleDetailPage() {
           <Navigation className="w-5 h-5" /> Get Directions
         </button>
       </div>
+
+      {/* Boost modal */}
+      {showBoost && user && (
+        <BoostModal sale={sale} user={user} onClose={() => setShowBoost(false)} />
+      )}
     </div>
   );
 }

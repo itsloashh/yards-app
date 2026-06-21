@@ -78,12 +78,16 @@ export default function MapView({ sales }) {
       const minutesLeft = sale.expiresAt ? Math.max(0, Math.floor((sale.expiresAt - now) / 60000)) : null;
       const isUrgent = !isUpcoming && minutesLeft !== null && minutesLeft <= 120 && minutesLeft > 0;
       const isMultiDay = sale.endDateRaw && sale.endDateRaw !== sale.dateRaw;
+      const boosted = sale.boostedUntil && new Date(sale.boostedUntil).getTime() > now;
 
-      // Pin color tiers: blue (upcoming) > red pulsing (≤2h left) > green (active)
+      // Pin color tiers: GOLD (boosted, priority) > blue (upcoming) > red pulsing (≤2h) > green (active)
       let pinBg = "#10b981"; // emerald-500 (default active)
       let arrowColor = "#10b981";
       let pulseClass = "";
-      if (isUpcoming) {
+      if (boosted) {
+        pinBg = "linear-gradient(135deg, #d97706, #f59e0b)";
+        arrowColor = "#f59e0b";
+      } else if (isUpcoming) {
         pinBg = "#3b82f6"; // blue-500
         arrowColor = "#3b82f6";
       } else if (isUrgent) {
@@ -92,23 +96,34 @@ export default function MapView({ sales }) {
         pulseClass = "sale-marker-urgent";
       }
 
+      // Boosted pins are larger and render above all others
+      const pinSize = boosted ? 50 : 40;
+      const innerSize = boosted ? 50 : 40;
+
       const icon = L.divIcon({
-        className: `sale-marker ${pulseClass}`,
+        className: `sale-marker ${pulseClass} ${boosted ? "sale-marker-boosted" : ""}`,
         html: `<div style="animation:dropPin 0.4s ease-out ${i * 0.06}s both">
-          <div class="sale-marker-inner" style="background:${pinBg};">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <div class="sale-marker-inner" style="background:${pinBg};width:${innerSize}px;height:${innerSize}px;${boosted ? "border-color:#fde68a;" : ""}">
+            ${boosted
+              ? `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z"/></svg>`
+              : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="1" x2="12" y2="23"></line>
               <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-            </svg>
+            </svg>`}
           </div>
           <div class="sale-marker-arrow" style="border-top-color:${arrowColor};"></div>
         </div>`,
-        iconSize: [40, 52], iconAnchor: [20, 52], popupAnchor: [0, -52],
+        iconSize: [pinSize, pinSize + 12], iconAnchor: [pinSize / 2, pinSize + 12], popupAnchor: [0, -(pinSize + 12)],
       });
 
-      const marker = L.marker([sale.coords.lat, sale.coords.lng], { icon });
+      const marker = L.marker([sale.coords.lat, sale.coords.lng], {
+        icon,
+        zIndexOffset: boosted ? 1000 : 0, // boosted pins always on top
+      });
 
-      const badgeHtml = isUpcoming
+      const badgeHtml = boosted
+        ? `<div style="display:inline-block;padding:2px 8px;background:#fef3c7;color:#92400e;border-radius:99px;font-size:10px;font-weight:700;margin-bottom:6px;">⭐ FEATURED</div>`
+        : isUpcoming
         ? `<div style="display:inline-block;padding:2px 8px;background:#dbeafe;color:#1e40af;border-radius:99px;font-size:10px;font-weight:700;margin-bottom:6px;">UPCOMING</div>`
         : isUrgent
         ? `<div style="display:inline-block;padding:2px 8px;background:#fee2e2;color:#991b1b;border-radius:99px;font-size:10px;font-weight:700;margin-bottom:6px;">${minutesLeft < 60 ? `${minutesLeft}M LEFT` : `${Math.floor(minutesLeft/60)}H LEFT`}</div>`
@@ -127,7 +142,7 @@ export default function MapView({ sales }) {
       </div>`;
 
       marker.bindPopup(popup, { closeButton: false });
-      marker.on("click", () => setSelected({ ...sale, isUpcoming, isUrgent, isMultiDay, minutesLeft }));
+      marker.on("click", () => setSelected({ ...sale, isUpcoming, isUrgent, isMultiDay, minutesLeft, boosted }));
       marker.addTo(map);
       markersRef.current.push(marker);
     });

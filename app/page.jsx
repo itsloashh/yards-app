@@ -2,6 +2,7 @@
 import { WifiOff } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { haversine, fmtDist, distLabel } from "@/lib/distance";
+import { isBoosted } from "@/lib/boostPackages";
 import SaleCard from "@/components/SaleCard";
 
 export default function HomePage() {
@@ -30,6 +31,10 @@ export default function HomePage() {
   if (sortBy === "newest") activeFiltered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   else if (sortBy === "ending") activeFiltered.sort((a, b) => (a.expiresAt || Infinity) - (b.expiresAt || Infinity));
   else activeFiltered.sort((a, b) => a.distance - b.distance);
+
+  // Boosted sales always rank first (within the chosen sort), newest-boost first
+  const boostRank = (s) => isBoosted(s.boostedUntil) ? new Date(s.boostedUntil).getTime() : 0;
+  activeFiltered.sort((a, b) => boostRank(b) - boostRank(a));
 
   upcomingFiltered.sort((a, b) => {
     const aDate = a.dateRaw ? new Date(a.dateRaw).getTime() : Infinity;
