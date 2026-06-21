@@ -1,14 +1,29 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, Loader2, MapPin, Tag, Mail, Calendar, ArrowUpDown, ShieldCheck } from "lucide-react";
 import { useAdminUsers } from "@/lib/admin";
 
 export default function AdminUsersPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-32"><Loader2 className="w-8 h-8 animate-spin text-emerald-500" /></div>}>
+      <AdminUsersInner />
+    </Suspense>
+  );
+}
+
+function AdminUsersInner() {
+  const searchParams = useSearchParams();
   const { users, loading } = useAdminUsers();
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState("created_at");
   const [sortDir, setSortDir] = useState("desc");
   const [filterSellers, setFilterSellers] = useState(false);
+
+  // Pre-apply sellers filter if arriving from the Overview card
+  useEffect(() => {
+    if (searchParams.get("filter") === "sellers") setFilterSellers(true);
+  }, [searchParams]);
 
   const filtered = useMemo(() => {
     let list = [...users];
