@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   location_country TEXT DEFAULT '',
   location_lat DOUBLE PRECISION,
   location_lng DOUBLE PRECISION,
+  role TEXT DEFAULT 'user',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

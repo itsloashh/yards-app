@@ -3,11 +3,7 @@ import "leaflet/dist/leaflet.css";
 import { Outfit, Fraunces } from "next/font/google";
 import { AppProvider } from "@/lib/AppContext";
 import { PostHogProvider } from "@/lib/posthog";
-import BottomNav from "@/components/BottomNav";
-import Header from "@/components/Header";
-import AuthModal from "@/components/AuthModal";
-import SplashScreen from "@/components/SplashScreen";
-import WelcomeModal from "@/components/WelcomeModal";
+import AppShell from "@/components/AppShell";
 
 const body = Outfit({ subsets: ["latin"], variable: "--font-body", weight: ["300", "400", "500", "600", "700", "800"] });
 const display = Fraunces({ subsets: ["latin"], variable: "--font-display", weight: ["700", "800", "900"] });
@@ -63,18 +59,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${body.variable} ${display.variable}`}>
       <body className={`${body.className} bg-stone-100 antialiased`}>
-        <SplashScreen />
         <PostHogProvider>
           <AppProvider>
-            <div className="md:max-w-md mx-auto bg-white min-h-[100dvh] h-[100dvh] relative shadow-2xl flex flex-col overflow-hidden">
-              <Header />
-              <main className="flex-1 overflow-y-auto no-scrollbar">
-                {children}
-              </main>
-              <BottomNav />
-              <AuthModal />
-              <WelcomeModal />
-            </div>
+            <AppShell>{children}</AppShell>
           </AppProvider>
         </PostHogProvider>
       </body>

@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, Calendar, CheckCircle, MessageCircle, Edit } from "lucide-react";
+import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, Calendar, CheckCircle, MessageCircle, Edit, ShieldCheck } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { AVATAR_COLORS } from "@/lib/constants";
 import { formatSaleDate } from "@/lib/timeFormat";
@@ -83,6 +83,9 @@ export default function ProfilePage() {
         <PBtn icon={Plus} color="emerald" label="Post a Yard Sale" onClick={() => router.push("/create")} />
         <PBtn icon={Eye} color="stone" label={`My Sales (${userSales.length})`} onClick={() => setViewingSales(true)} />
         <PBtn icon={MessageCircle} color="stone" label="Contact Us" onClick={() => router.push("/contact")} />
+        {profile?.role === "admin" && (
+          <PBtn icon={ShieldCheck} color="emerald" label="Admin Dashboard" onClick={() => router.push("/admin")} />
+        )}
         <PBtn icon={LogOut} color="rose" label="Sign Out" onClick={async () => { await handleLogout(); router.push("/"); }} />
       </div>
     </div>
