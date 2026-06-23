@@ -4,6 +4,7 @@ import { useApp } from "@/lib/AppContext";
 import { haversine, fmtDist, distLabel } from "@/lib/distance";
 import { isBoosted } from "@/lib/boostPackages";
 import SaleCard from "@/components/SaleCard";
+import PromoBanner from "@/components/PromoBanner";
 
 export default function HomePage() {
   const { activeSales, upcomingSales, loc, dist, unit, sortBy, setSortBy, authLoading, salesLoading, sales, connOk, salesLoadError } = useApp();
@@ -83,6 +84,7 @@ export default function HomePage() {
     return (
       <div>
         <ConnectionBanner />
+        <PromoBanner />
         <div className="flex flex-col items-center justify-center p-10 text-center" style={{ minHeight: "50vh" }}>
           <div className="w-24 h-24 bg-gradient-to-br from-emerald-100 to-lime-100 rounded-full flex items-center justify-center mb-5">
             <span className="text-4xl">🏷️</span>
@@ -107,6 +109,7 @@ export default function HomePage() {
   return (
     <div>
       <ConnectionBanner />
+      <PromoBanner />
       <div className="p-4 space-y-3 pb-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-stone-800 font-display">{showAll ? "All Sales" : "Nearby Sales"}</h2>

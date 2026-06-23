@@ -6,7 +6,7 @@ import { X, Sparkles, Check } from "lucide-react";
 // Bump this whenever you want everyone to see the welcome modal again
 // (e.g., after shipping a notable feature). Users who previously checked
 // "Don't show again" for an older version will still see this new one.
-const ANNOUNCEMENT_VERSION = "2026-04-26";
+const ANNOUNCEMENT_VERSION = "2026-06-21";
 
 // LocalStorage key — stores the last version the user dismissed
 const STORAGE_KEY = "yards_welcome_dismissed_version";
@@ -16,14 +16,15 @@ const STORAGE_KEY = "yards_welcome_dismissed_version";
 // Bump ANNOUNCEMENT_VERSION above to push it to all users again.
 const ANNOUNCEMENT = {
   title: "Welcome to Yard$",
-  subtitle: "The live yard sale map for your city",
+  subtitle: "The original live yard sale marketplace",
   description:
-    "Find local yard sales happening near you, save your favorites, and post your own — all in one place.",
+    "Find local yard sales near you, save your favorites, and post your own — all on one live map.",
   whatsNew: [
-    "Multi-day sales — list a sale across an entire weekend",
-    "Red pins flag sales ending in under 2 hours",
-    "Smarter address pinning for accurate directions",
-    "Add Yard$ to your home screen for an app-like experience",
+    "Boost your ad to get featured & seen by more shoppers",
+    "See sales anywhere — not just nearby — with the new range filter",
+    "Edit your sales anytime without re-posting",
+    "Track how many views your listings get",
+    "Multi-day sales for weekend-long events",
   ],
 };
 
@@ -139,6 +140,10 @@ export default function WelcomeModal() {
           >
             Got it — let's browse!
           </button>
+
+          <p className="text-center text-stone-400 text-[10px] mt-3 leading-relaxed px-2">
+            Yard$ is the original yard sale marketplace. Beware of copycat or look-alike apps and sites — accept no imitations.
+          </p>
         </div>
       </div>
     </div>

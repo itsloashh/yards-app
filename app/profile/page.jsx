@@ -1,20 +1,36 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, Calendar, CheckCircle, MessageCircle, Edit, ShieldCheck } from "lucide-react";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, Calendar, CheckCircle, MessageCircle, Edit, ShieldCheck, Loader2, Rocket } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { AVATAR_COLORS } from "@/lib/constants";
 import { formatSaleDate } from "@/lib/timeFormat";
 import LocationAutocomplete from "@/components/LocationAutocomplete";
 
 export default function ProfilePage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center" style={{ minHeight: "50vh" }}><Loader2 className="w-8 h-8 text-emerald-500 animate-spin" /></div>}>
+      <ProfileInner />
+    </Suspense>
+  );
+}
+
+function ProfileInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const {
     user, profile, handleLogout, handleUpdateProfile, handleDeleteSale, setShowAuth,
     unit, setUnit, userSales, userActiveSales, userUpcomingSales, userPastSales,
   } = useApp();
   const [editing, setEditing] = useState(false);
   const [viewingSales, setViewingSales] = useState(false);
+
+  // Open My Sales directly when arriving from the "Boost your ad" banner
+  useEffect(() => {
+    if (searchParams.get("view") === "sales" && user) {
+      setViewingSales(true);
+    }
+  }, [searchParams, user]);
 
   if (!user || !profile) {
     return (
@@ -296,6 +312,9 @@ function MySales({ activeSales, upcomingSales, pastSales, onClose, onDelete, onV
                     {tab === "upcoming" && (
                       <span className="px-2 py-0.5 bg-blue-100 text-blue-600 text-[10px] font-semibold rounded-full shrink-0">Upcoming</span>
                     )}
+                    {!isPast && s.boostedUntil && new Date(s.boostedUntil).getTime() > Date.now() && (
+                      <span className="px-2 py-0.5 text-white text-[10px] font-semibold rounded-full shrink-0 flex items-center gap-0.5" style={{ background: "linear-gradient(135deg, #d97706, #f59e0b)" }}>✦ Featured</span>
+                    )}
                   </div>
                   {s.address && <p className={`text-xs mt-0.5 ${isPast ? "text-stone-400" : "text-emerald-600"}`}>📍 {s.address}</p>}
                   <p className={`text-xs mt-0.5 ${isPast ? "text-stone-400" : "text-stone-500"}`}>{s.dateRaw ? formatSaleDate(s.dateRaw, s.startTime, s.endTime, tf, s.endDateRaw) : (s.date || "TBD")}</p>
@@ -306,6 +325,12 @@ function MySales({ activeSales, upcomingSales, pastSales, onClose, onDelete, onV
               </div>
 
               <div className="px-3 pb-3 flex gap-2">
+                {!isPast && !(s.boostedUntil && new Date(s.boostedUntil).getTime() > Date.now()) && (
+                  <button onClick={() => router.push(`/sale/${s.id}`)}
+                    className="flex-1 py-2 text-white font-medium rounded-lg text-xs flex items-center justify-center gap-1 transition" style={{ background: "linear-gradient(135deg, #d97706, #f59e0b)" }}>
+                    <Rocket className="w-3.5 h-3.5" /> Boost
+                  </button>
+                )}
                 {!isPast && (
                   <button onClick={() => router.push(`/create?edit=${s.id}`)}
                     className="flex-1 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 font-medium rounded-lg text-xs flex items-center justify-center gap-1 hover:bg-emerald-100 transition">
