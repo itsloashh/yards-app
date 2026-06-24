@@ -1,13 +1,14 @@
 "use client";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Heart, Clock, MapPin, Navigation, Star, Phone, Mail, MessageCircle, Trash2, Edit, Share2, AlertCircle, Eye, Rocket, Sparkles, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart, Clock, MapPin, Navigation, Star, Phone, Mail, MessageCircle, Trash2, Edit, Share2, AlertCircle, Eye, Rocket, Sparkles, Loader2, Flag, Shield } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { haversine, fmtDist } from "@/lib/distance";
 import { formatSaleDate } from "@/lib/timeFormat";
 import { isBoosted } from "@/lib/boostPackages";
 import BoostModal from "@/components/BoostModal";
 import ShareModal from "@/components/ShareModal";
+import ReportModal from "@/components/ReportModal";
 
 export default function SaleDetailPage() {
   return (
@@ -27,6 +28,7 @@ function SaleDetailInner() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showBoost, setShowBoost] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [boostBanner, setBoostBanner] = useState(null); // "success" | "cancelled" | null
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
@@ -295,11 +297,26 @@ function SaleDetailInner() {
                   {!sale.seller?.phone && (
                     <p className="text-xs text-stone-400 text-center">This seller hasn't added a phone number yet.</p>
                   )}
+                  {/* Safety tip shown when contacting */}
+                  <div className="flex items-start gap-2 mt-2 px-3 py-2.5 bg-amber-50 border border-amber-100 rounded-xl">
+                    <Shield className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-amber-800 text-xs leading-relaxed">
+                      Stay safe: meet during daylight, bring a friend, and meet in a public spot when you can. Trust your instincts.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
           )}
         </div>
+
+        {/* Report — non-owners only, signed-in flow handled in modal */}
+        {!isOwner && (
+          <button onClick={() => setShowReport(true)}
+            className="w-full py-2.5 text-stone-400 text-xs font-medium flex items-center justify-center gap-1.5 hover:text-stone-600 transition">
+            <Flag className="w-3.5 h-3.5" /> Report this sale
+          </button>
+        )}
 
         {/* Owner actions */}
         {isOwner && (
@@ -390,6 +407,11 @@ function SaleDetailInner() {
       {/* Share modal */}
       {showShare && (
         <ShareModal sale={sale} onClose={() => setShowShare(false)} />
+      )}
+
+      {/* Report modal */}
+      {showReport && (
+        <ReportModal targetType="sale" sale={sale} onClose={() => setShowReport(false)} />
       )}
     </div>
   );
