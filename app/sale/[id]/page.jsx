@@ -7,6 +7,7 @@ import { haversine, fmtDist } from "@/lib/distance";
 import { formatSaleDate } from "@/lib/timeFormat";
 import { isBoosted } from "@/lib/boostPackages";
 import BoostModal from "@/components/BoostModal";
+import ShareModal from "@/components/ShareModal";
 
 export default function SaleDetailPage() {
   return (
@@ -25,6 +26,7 @@ function SaleDetailInner() {
   const [showContact, setShowContact] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showBoost, setShowBoost] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [boostBanner, setBoostBanner] = useState(null); // "success" | "cancelled" | null
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
@@ -82,14 +84,7 @@ function SaleDetailInner() {
     window.open(`https://www.google.com/maps/dir/${orig}/${dest}`, "_blank");
   };
 
-  const shareSale = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try { await navigator.share({ title: sale.title, text: `Check out this yard sale: ${sale.title}`, url }); } catch {}
-    } else {
-      navigator.clipboard?.writeText(url);
-    }
-  };
+  const shareSale = () => setShowShare(true);
 
   const doDelete = () => {
     handleDeleteSale(sale.id);
@@ -253,6 +248,12 @@ function SaleDetailInner() {
           <p className="text-stone-600 text-sm leading-relaxed">{sale.description}</p>
         </div>
 
+        {/* Share — available to everyone */}
+        <button onClick={() => setShowShare(true)}
+          className="w-full py-3 bg-white border-2 border-emerald-200 text-emerald-700 font-semibold rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-emerald-50 transition">
+          <Share2 className="w-4 h-4" /> Share this sale
+        </button>
+
         {/* Seller Card with Contact */}
         <div className="p-4 bg-stone-50 rounded-xl">
           <div className="flex items-center gap-4">
@@ -384,6 +385,11 @@ function SaleDetailInner() {
       {/* Boost modal */}
       {showBoost && user && (
         <BoostModal sale={sale} user={user} onClose={() => setShowBoost(false)} />
+      )}
+
+      {/* Share modal */}
+      {showShare && (
+        <ShareModal sale={sale} onClose={() => setShowShare(false)} />
       )}
     </div>
   );

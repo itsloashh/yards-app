@@ -27,21 +27,27 @@ export async function POST() {
     return NextResponse.json({ error: "Not configured" }, { status: 503 });
   }
   try {
-    // Get sales missing a city but having coordinates
-    const { data: sales, error } = await supabaseAdmin
+    // Fetch sales and filter for missing city in JS — more reliable than
+    // Supabase .or() with empty-string matching, which can silently miss rows.
+    const { data: allSales, error } = await supabaseAdmin
       .from("sales")
-      .select("id, lat, lng, city")
-      .or("city.is.null,city.eq.")
-      .limit(40); // process in batches to stay within time limits
+      .select("id, lat, lng, city");
 
     if (error) throw error;
-    if (!sales || sales.length === 0) {
+
+    const needsCity = (allSales || []).filter(
+      (s) => (!s.city || s.city.trim() === "") && typeof s.lat === "number" && typeof s.lng === "number"
+    );
+
+    if (needsCity.length === 0) {
       return NextResponse.json({ done: true, updated: 0, remaining: 0, message: "All sales already have a city." });
     }
 
+    // Process up to 40 per run to stay within time limits
+    const batch = needsCity.slice(0, 40);
+
     let updated = 0;
-    for (const s of sales) {
-      if (typeof s.lat !== "number" || typeof s.lng !== "number") continue;
+    for (const s of batch) {
       const { city, region } = await reverseCity(s.lat, s.lng);
       if (city) {
         await supabaseAdmin.from("sales").update({ city, region }).eq("id", s.id);
@@ -51,17 +57,15 @@ export async function POST() {
       await new Promise((res) => setTimeout(res, 1100));
     }
 
-    // Check how many still remain
-    const { count } = await supabaseAdmin
-      .from("sales")
-      .select("id", { count: "exact", head: true })
-      .or("city.is.null,city.eq.");
+    const remaining = needsCity.length - updated;
 
     return NextResponse.json({
-      done: (count || 0) === 0,
+      done: remaining === 0,
       updated,
-      remaining: count || 0,
-      message: `Updated ${updated} sales. ${count || 0} still need backfilling — run again to continue.`,
+      remaining,
+      message: remaining === 0
+        ? `Done — updated ${updated} sale${updated !== 1 ? "s" : ""} with their city.`
+        : `Updated ${updated} sales. ${remaining} still need backfilling — run again to continue.`,
     });
   } catch (err) {
     console.error("[backfill-cities] error:", err);
