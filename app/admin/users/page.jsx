@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { Search, Loader2, MapPin, Tag, Mail, Calendar, ArrowUpDown, ShieldCheck } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Search, Loader2, MapPin, Tag, Mail, Calendar, ArrowUpDown, ShieldCheck, ChevronRight } from "lucide-react";
 import { useAdminUsers } from "@/lib/admin";
 
 export default function AdminUsersPage() {
@@ -14,6 +14,7 @@ export default function AdminUsersPage() {
 
 function AdminUsersInner() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { users, loading } = useAdminUsers();
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState("created_at");
@@ -117,7 +118,8 @@ function AdminUsersInner() {
               {filtered.length === 0 ? (
                 <tr><td colSpan={4} className="px-4 py-12 text-center text-stone-500">No users match your filters.</td></tr>
               ) : filtered.map((u) => (
-                <tr key={u.id} className="border-b border-stone-800/50 hover:bg-stone-800/30 transition">
+                <tr key={u.id} onClick={() => router.push(`/admin/users/${u.id}`)}
+                  className="border-b border-stone-800/50 hover:bg-stone-800/30 transition cursor-pointer">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white text-xs font-bold" style={{ background: u.avatar_color || "#059669" }}>
@@ -143,7 +145,10 @@ function AdminUsersInner() {
                     <span className={`text-xs font-semibold ${(u.sales_posted || 0) > 0 ? "text-emerald-400" : "text-stone-500"}`}>{u.sales_posted || 0}</span>
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className="text-stone-400 text-xs flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(u.created_at).toLocaleDateString()}</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-stone-400 text-xs flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(u.created_at).toLocaleDateString()}</span>
+                      <ChevronRight className="w-4 h-4 text-stone-600" />
+                    </div>
                   </td>
                 </tr>
               ))}

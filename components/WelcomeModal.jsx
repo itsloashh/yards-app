@@ -6,7 +6,7 @@ import { X, Sparkles, Check } from "lucide-react";
 // Bump this whenever you want everyone to see the welcome modal again
 // (e.g., after shipping a notable feature). Users who previously checked
 // "Don't show again" for an older version will still see this new one.
-const ANNOUNCEMENT_VERSION = "2026-06-21";
+const ANNOUNCEMENT_VERSION = "2026-06-24";
 
 // LocalStorage key — stores the last version the user dismissed
 const STORAGE_KEY = "yards_welcome_dismissed_version";
@@ -20,11 +20,11 @@ const ANNOUNCEMENT = {
   description:
     "Find local yard sales near you, save your favorites, and post your own — all on one live map.",
   whatsNew: [
+    "Plan your Saturday route — map a trip through your saved sales",
+    "Share any sale to Instagram, TikTok, or with a link",
+    "Report tools to help keep the community safe",
     "Boost your ad to get featured & seen by more shoppers",
-    "See sales anywhere — not just nearby — with the new range filter",
-    "Edit your sales anytime without re-posting",
-    "Track how many views your listings get",
-    "Multi-day sales for weekend-long events",
+    "See sales anywhere with the new range filter",
   ],
 };
 

@@ -134,13 +134,14 @@ export default function AdminUserMap({ users }) {
           </div>
           <div className="overflow-y-auto flex-1">
             {selected.users.map((u) => (
-              <div key={u.id} className="px-4 py-2.5 border-b border-stone-800/60 last:border-0">
+              <a key={u.id} href={`/admin/users/${u.id}`}
+                className="block px-4 py-2.5 border-b border-stone-800/60 last:border-0 hover:bg-stone-800/50 transition">
                 <p className="text-stone-200 text-sm truncate">{u.name || "Unnamed"}</p>
                 <p className="text-stone-500 text-xs truncate">{u.email}</p>
                 <p className="text-stone-600 text-[11px] mt-0.5">
                   Joined {new Date(u.created_at).toLocaleDateString()} · {u.sales_posted || 0} sales
                 </p>
-              </div>
+              </a>
             ))}
           </div>
         </div>
