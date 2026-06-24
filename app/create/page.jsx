@@ -148,13 +148,23 @@ function CreatePageInner() {
     // If user clicked "Use my location", we already have their device coords stored.
     // Otherwise, forward-geocode the typed address to get the actual sale location.
     let saleCoords;
+    let saleCity = "";
+    let saleRegion = "";
     if (coordsSource === "current" && storedCurrentCoords) {
       saleCoords = storedCurrentCoords;
+      // Try to derive city from a reverse geocode of the stored coords (best-effort)
+      try {
+        const rev = await reverseGeocode(storedCurrentCoords.lat, storedCurrentCoords.lng);
+        saleCity = rev.city || "";
+        saleRegion = rev.state || "";
+      } catch {}
     } else {
       // Geocode the typed address
       const geo = await geocodeAddress(form.address.trim());
       if (geo.success) {
         saleCoords = { lat: geo.lat, lng: geo.lng };
+        saleCity = geo.city || "";
+        saleRegion = geo.region || "";
       } else {
         // Address couldn't be geocoded — show error, don't fall back to device location
         setLoading(false);
@@ -172,6 +182,8 @@ function CreatePageInner() {
       title: form.title.trim(),
       description: form.description.trim(),
       address: form.address.trim(),
+      city: saleCity,
+      region: saleRegion,
       dateRaw: form.date,
       endDateRaw: finalEndDate,
       startTime: form.startTime || null,

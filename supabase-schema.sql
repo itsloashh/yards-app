@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS sales (
   title TEXT NOT NULL,
   description TEXT NOT NULL,
   address TEXT DEFAULT '',
+  city TEXT DEFAULT '',
+  region TEXT DEFAULT '',
   date_display TEXT DEFAULT 'TBD',
   date_raw DATE,
   end_date_raw DATE,

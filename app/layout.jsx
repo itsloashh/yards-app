@@ -10,11 +10,12 @@ const display = Fraunces({ subsets: ["latin"], variable: "--font-display", weigh
 
 export const metadata = {
   metadataBase: new URL("https://shopyards.ca"),
-  title: "Yard$ — Yard Sale Marketplace",
-  description: "Find and post yard sales near you. The live yard sale map for your city.",
+  title: "Yard$ — Find Yard Sales Near You | Live Garage & Estate Sale Map",
+  description: "Find and post yard sales near you on Yard$, the live yard sale marketplace. Discover garage sales, estate sales, and rummage sales with addresses, photos, and directions.",
   manifest: "/manifest.json",
   themeColor: "#059669",
   viewport: "width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no",
+  alternates: { canonical: "https://shopyards.ca" },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

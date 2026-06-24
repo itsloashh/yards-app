@@ -1,6 +1,41 @@
 "use client";
-import { Loader2, BarChart3, Globe2, Users, Tag } from "lucide-react";
+import { useState } from "react";
+import { Loader2, BarChart3, Globe2, Users, Tag, MapPin, RefreshCw } from "lucide-react";
 import { useAdminUsers, computeRegionStats, computeCountryStats } from "@/lib/admin";
+
+function BackfillCities() {
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState("");
+
+  const run = async () => {
+    setRunning(true);
+    setResult("");
+    try {
+      const res = await fetch("/api/admin/backfill-cities", { method: "POST" });
+      const data = await res.json();
+      setResult(data.message || (data.error ? `Error: ${data.error}` : "Done."));
+    } catch {
+      setResult("Request failed — try again.");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5">
+      <h2 className="text-white font-bold mb-2 flex items-center gap-2"><MapPin className="w-5 h-5 text-emerald-400" /> City Data (for SEO pages)</h2>
+      <p className="text-stone-400 text-sm mb-4">
+        Populates the city for older sales so they appear on city landing pages. New sales get this automatically. Processes ~40 at a time — run again if more remain.
+      </p>
+      <button onClick={run} disabled={running}
+        className="px-4 py-2.5 rounded-xl text-sm font-medium bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 transition flex items-center gap-2 disabled:opacity-60">
+        {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+        {running ? "Backfilling… (takes ~45s)" : "Backfill city data"}
+      </button>
+      {result && <p className="text-stone-300 text-xs mt-3">{result}</p>}
+    </div>
+  );
+}
 
 export default function AdminRegionsPage() {
   const { users, loading } = useAdminUsers();
@@ -19,6 +54,8 @@ export default function AdminRegionsPage() {
         <h1 className="text-2xl font-bold text-white">Regions</h1>
         <p className="text-stone-400 text-sm mt-1">Where your community is growing — use this to prioritize expansion.</p>
       </div>
+
+      <BackfillCities />
 
       {/* Country breakdown */}
       <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5">

@@ -11,10 +11,16 @@ import SplashScreen from "@/components/SplashScreen";
 export default function AppShell({ children }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
+  const isSeo = pathname?.startsWith("/yard-sales");
 
   if (isAdmin) {
     // Full-bleed: admin pages control their own layout entirely
     return <div className="min-h-[100dvh] bg-stone-50">{children}</div>;
+  }
+
+  if (isSeo) {
+    // SEO landing pages render standalone (no mobile chrome) for clean crawling
+    return <div className="min-h-[100dvh] bg-white">{children}</div>;
   }
 
   // Standard consumer mobile-app shell
