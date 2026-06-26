@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, Calendar, CheckCircle, MessageCircle, Edit, ShieldCheck, Loader2, Rocket } from "lucide-react";
+import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, Calendar, CheckCircle, MessageCircle, Edit, ShieldCheck, Loader2, Rocket, Camera, Star } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { AVATAR_COLORS } from "@/lib/constants";
 import { formatSaleDate } from "@/lib/timeFormat";
@@ -62,10 +62,20 @@ function ProfileInner() {
     <div className="p-4">
       <div className="rounded-2xl p-6 text-white mb-4 relative overflow-hidden" style={{ background: "linear-gradient(135deg, #065f46, #059669, #84cc16)" }}>
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg border-2 border-white/30" style={{ background: profile.avatar_color || "#059669" }}>{initials}</div>
+          {profile.avatar_url ? (
+            <img src={profile.avatar_url} alt={profile.name} className="w-16 h-16 rounded-full object-cover shadow-lg border-2 border-white/30" />
+          ) : (
+            <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg border-2 border-white/30" style={{ background: profile.avatar_color || "#059669" }}>{initials}</div>
+          )}
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold font-display">{profile.name}</h2>
             <p className="text-white/70 text-sm">{profile.email}</p>
+            {(profile.review_count > 0) && (
+              <p className="text-white/90 text-xs mt-1 flex items-center gap-1">
+                <Star className="w-3.5 h-3.5 fill-current text-amber-300" />
+                {Number(profile.rating).toFixed(1)} · {profile.review_count} review{profile.review_count !== 1 ? "s" : ""}
+              </p>
+            )}
             {profile.bio && <p className="text-white/60 text-xs mt-1 truncate">{profile.bio}</p>}
           </div>
         </div>
@@ -119,10 +129,13 @@ function PBtn({ icon: Icon, color, label, onClick }) {
 }
 
 function EditProfile({ profile, onSave, onClose }) {
+  const { uploadAvatar } = useApp();
   const [name, setName] = useState(profile.name || "");
   const [bio, setBio] = useState(profile.bio || "");
   const [phone, setPhone] = useState(profile.phone || "");
   const [avatarColor, setAvatarColor] = useState(profile.avatar_color || "#059669");
+  const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url || "");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [timeFormat, setTimeFormat] = useState(profile.time_format === "24h" ? "24h" : "12h");
   // Location pre-fill from existing profile if set
   const [location, setLocation] = useState(
@@ -138,6 +151,29 @@ function EditProfile({ profile, onSave, onClose }) {
   const [saving, setSaving] = useState(false);
   const initials = name.split(" ").map(n => n[0] || "").join("").toUpperCase();
 
+  const handleAvatarFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 5 * 1024 * 1024) { alert("Please choose an image under 5MB."); return; }
+    setUploadingAvatar(true);
+    try {
+      const base64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+      const url = await uploadAvatar(base64);
+      if (url) setAvatarUrl(url);
+      else alert("Couldn't upload that photo. Please try again.");
+    } catch {
+      alert("Couldn't process that image.");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const save = async () => {
     setSaving(true);
     const updates = {
@@ -145,6 +181,7 @@ function EditProfile({ profile, onSave, onClose }) {
       bio: bio.slice(0, 150),
       phone,
       avatar_color: avatarColor,
+      avatar_url: avatarUrl,
       time_format: timeFormat,
     };
     // Only write location fields if user selected a new one
@@ -167,13 +204,29 @@ function EditProfile({ profile, onSave, onClose }) {
         <h1 className="text-xl font-bold text-stone-800 font-display">Edit Profile</h1>
       </div>
       <div className="flex flex-col items-center">
-        <div className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white shadow-lg mb-3" style={{ background: avatarColor }}>{initials || "?"}</div>
-        <p className="text-stone-500 text-sm">Choose your color</p>
-        <div className="flex gap-2 mt-3 flex-wrap justify-center">
-          {AVATAR_COLORS.map(c => (
-            <button key={c.hex} onClick={() => setAvatarColor(c.hex)} className={`w-9 h-9 rounded-full transition-all shadow-sm ${avatarColor === c.hex ? "ring-2 ring-offset-2 ring-emerald-500 scale-110" : "hover:scale-105"}`} style={{ background: c.hex }} />
-          ))}
+        <div className="relative mb-3">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="Profile" className="w-24 h-24 rounded-full object-cover shadow-lg" />
+          ) : (
+            <div className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white shadow-lg" style={{ background: avatarColor }}>{initials || "?"}</div>
+          )}
+          <label className="absolute bottom-0 right-0 w-9 h-9 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg cursor-pointer hover:bg-emerald-600 transition border-2 border-white">
+            {uploadingAvatar ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Camera className="w-4 h-4 text-white" />}
+            <input type="file" accept="image/*" onChange={handleAvatarFile} disabled={uploadingAvatar} className="hidden" />
+          </label>
         </div>
+        {avatarUrl ? (
+          <button onClick={() => setAvatarUrl("")} className="text-stone-400 text-xs hover:text-stone-600 transition">Remove photo &amp; use color instead</button>
+        ) : (
+          <>
+            <p className="text-stone-500 text-sm">Add a photo, or choose a color</p>
+            <div className="flex gap-2 mt-3 flex-wrap justify-center">
+              {AVATAR_COLORS.map(c => (
+                <button key={c.hex} onClick={() => setAvatarColor(c.hex)} className={`w-9 h-9 rounded-full transition-all shadow-sm ${avatarColor === c.hex ? "ring-2 ring-offset-2 ring-emerald-500 scale-110" : "hover:scale-105"}`} style={{ background: c.hex }} />
+              ))}
+            </div>
+          </>
+        )}
       </div>
       <div>
         <label className="block font-medium text-stone-800 mb-1.5">Display Name</label>

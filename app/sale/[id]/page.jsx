@@ -9,6 +9,8 @@ import { isBoosted } from "@/lib/boostPackages";
 import BoostModal from "@/components/BoostModal";
 import ShareModal from "@/components/ShareModal";
 import ReportModal from "@/components/ReportModal";
+import ReviewsModal from "@/components/ReviewsModal";
+import Avatar from "@/components/Avatar";
 
 export default function SaleDetailPage() {
   return (
@@ -22,13 +24,14 @@ function SaleDetailInner() {
   const router = useRouter();
   const { id } = useParams();
   const searchParams = useSearchParams();
-  const { sales, loc, unit, toggleSaved, isSaved, user, handleDeleteSale, incrementSaleViews, profile } = useApp();
+  const { sales, loc, unit, toggleSaved, isSaved, user, handleDeleteSale, incrementSaleViews, profile, loadSales } = useApp();
   const [photo, setPhoto] = useState(0);
   const [showContact, setShowContact] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showBoost, setShowBoost] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [showReviews, setShowReviews] = useState(false);
   const [boostBanner, setBoostBanner] = useState(null); // "success" | "cancelled" | null
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
@@ -259,15 +262,19 @@ function SaleDetailInner() {
         {/* Seller Card with Contact */}
         <div className="p-4 bg-stone-50 rounded-xl">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow"
-              style={{ background: sale.seller?.avatarColor || "#059669" }}>
-              {sale.seller?.name?.charAt(0)}
-            </div>
-            <div className="flex-1">
+            <Avatar name={sale.seller?.name} avatarUrl={sale.seller?.avatarUrl} avatarColor={sale.seller?.avatarColor} size={48} className="shadow text-lg" />
+            <div className="flex-1 min-w-0">
               <p className="font-bold text-stone-800">{sale.seller?.name}</p>
-              <div className="flex items-center gap-2 text-sm text-stone-500">
-                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" /> {sale.seller?.rating} · {sale.seller?.sales} sales
-              </div>
+              <button onClick={() => setShowReviews(true)} className="flex items-center gap-2 text-sm text-stone-500 hover:text-emerald-600 transition">
+                {sale.seller?.reviewCount > 0 ? (
+                  <>
+                    <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                    {Number(sale.seller.rating).toFixed(1)} · {sale.seller.reviewCount} review{sale.seller.reviewCount !== 1 ? "s" : ""}
+                  </>
+                ) : (
+                  <span className="text-emerald-600 font-medium">Be the first to review</span>
+                )}
+              </button>
             </div>
           </div>
           {sale.seller?.bio && (
@@ -412,6 +419,16 @@ function SaleDetailInner() {
       {/* Report modal */}
       {showReport && (
         <ReportModal targetType="sale" sale={sale} onClose={() => setShowReport(false)} />
+      )}
+
+      {/* Reviews modal */}
+      {showReviews && sale.seller?.id && (
+        <ReviewsModal
+          seller={sale.seller}
+          saleId={sale.id}
+          onClose={() => setShowReviews(false)}
+          onChanged={() => { if (typeof loadSales === "function") loadSales(); }}
+        />
       )}
     </div>
   );

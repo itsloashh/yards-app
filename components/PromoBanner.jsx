@@ -28,7 +28,7 @@ const SLIDES = [
   {
     id: "facebook",
     type: "link",
-    href: "https://facebook.com/officialyards",
+    href: "https://www.facebook.com/share/1Kmt18sjuD/?mibextid=wwXlfr",
     icon: Facebook,
     title: "Find us on Facebook",
     subtitle: "@officialyards — join the community",
