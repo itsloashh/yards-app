@@ -90,13 +90,11 @@ export default function WelcomeModal() {
           </button>
 
           <div className="relative flex flex-col items-center text-center">
-            <div className="w-44 h-44 rounded-3xl bg-white flex items-center justify-center mb-3 shadow-xl">
-              <img
-                src="/logo-sign.png"
-                alt="Yard$"
-                className="w-40 h-40 object-contain"
-              />
-            </div>
+            <img
+              src="/logo-sign.png"
+              alt="Yard$"
+              className="w-44 h-44 object-contain mb-3 drop-shadow-lg"
+            />
             <h2 className="text-2xl font-bold font-display">{ANNOUNCEMENT.title}</h2>
             <p className="text-white/85 text-sm mt-1">{ANNOUNCEMENT.subtitle}</p>
           </div>
