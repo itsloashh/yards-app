@@ -81,7 +81,8 @@ export default function MapView({ sales }) {
       const isMultiDay = sale.endDateRaw && sale.endDateRaw !== sale.dateRaw;
       const boosted = sale.boostedUntil && new Date(sale.boostedUntil).getTime() > now;
 
-      // Pin color tiers: GOLD (boosted, priority) > blue (upcoming) > red pulsing (≤2h) > green (active)
+      // Pin color tiers: GOLD (boosted) > blue (upcoming) > red pulse (≤2h) > purple pulse (active event) > green (active)
+      const isEvent = sale.saleType === "event";
       let pinBg = "#10b981"; // emerald-500 (default active)
       let arrowColor = "#10b981";
       let pulseClass = "";
@@ -95,6 +96,11 @@ export default function MapView({ sales }) {
         pinBg = "#ef4444"; // red-500
         arrowColor = "#ef4444";
         pulseClass = "sale-marker-urgent";
+      } else if (isEvent) {
+        // Active events get a distinct purple identity + pulse to stand out
+        pinBg = "#9333ea"; // purple-600
+        arrowColor = "#9333ea";
+        pulseClass = "sale-marker-event";
       }
 
       // Boosted pins are larger and render above all others

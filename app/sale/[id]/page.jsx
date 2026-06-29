@@ -237,8 +237,9 @@ function SaleDetailInner() {
           {(() => {
             const st = getSaleType(sale.saleType);
             const STIcon = st.icon;
+            const isEvent = sale.saleType === "event";
             return (
-              <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-white text-xs font-bold" style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>
+              <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-white text-xs font-bold" style={{ background: isEvent ? "linear-gradient(135deg, #7e22ce, #9333ea)" : "linear-gradient(135deg, #059669, #84cc16)" }}>
                 <STIcon className="w-3.5 h-3.5" /> {st.label}
               </div>
             );

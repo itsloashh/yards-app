@@ -6,7 +6,7 @@ import { X, Sparkles, Check } from "lucide-react";
 // Bump this whenever you want everyone to see the welcome modal again
 // (e.g., after shipping a notable feature). Users who previously checked
 // "Don't show again" for an older version will still see this new one.
-const ANNOUNCEMENT_VERSION = "2026-06-24";
+const ANNOUNCEMENT_VERSION = "2026-06-29b";
 
 // LocalStorage key — stores the last version the user dismissed
 const STORAGE_KEY = "yards_welcome_dismissed_version";
@@ -18,13 +18,14 @@ const ANNOUNCEMENT = {
   title: "Welcome to Yard$",
   subtitle: "The original live yard sale marketplace",
   description:
-    "Find local yard sales near you, save your favorites, and post your own — all on one live map.",
+    "Find local sales near you, save your favorites, and post your own — all on one live map.",
   whatsNew: [
-    "Plan your Saturday route — map a trip through your saved sales",
+    "New sale types — yard, estate, market & event, each with its own map pin",
+    "Hosting an event? Your pin stands out in pulsing purple",
+    "Rate & review sellers to build community trust",
+    "Add a profile photo to personalize your account",
+    "Plan your Saturday route through your saved sales",
     "Share any sale to Instagram, TikTok, or with a link",
-    "Report tools to help keep the community safe",
-    "Boost your ad to get featured & seen by more shoppers",
-    "See sales anywhere with the new range filter",
   ],
 };
 
@@ -89,11 +90,13 @@ export default function WelcomeModal() {
           </button>
 
           <div className="relative flex flex-col items-center text-center">
-            <img
-              src="/logo-sign.png"
-              alt="Yard$"
-              className="w-32 h-32 object-contain mb-1 drop-shadow-md"
-            />
+            <div className="w-44 h-44 rounded-3xl bg-white flex items-center justify-center mb-3 shadow-xl">
+              <img
+                src="/logo-sign.png"
+                alt="Yard$"
+                className="w-40 h-40 object-contain"
+              />
+            </div>
             <h2 className="text-2xl font-bold font-display">{ANNOUNCEMENT.title}</h2>
             <p className="text-white/85 text-sm mt-1">{ANNOUNCEMENT.subtitle}</p>
           </div>
