@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Camera, X, MapPin, RefreshCw, Crosshair, Star, ChevronDown, AlertCircle, Loader2, CalendarX2, Check } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { CATEGORIES } from "@/lib/constants";
+import { SALE_TYPES } from "@/lib/saleTypes";
 import { reverseGeocode, geocodeAddress } from "@/lib/geocode";
 import { compressImage } from "@/lib/imageUtils";
 import { formatSaleDate } from "@/lib/timeFormat";
@@ -21,7 +22,7 @@ function CreatePageInner() {
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
   const { user, loc, handleCreateSale, handleUpdateSale, setShowAuth, profile, sales } = useApp();
-  const [form, setForm] = useState({ title: "", description: "", address: "", date: "", endDate: "", startTime: "", endTime: "", categories: [], photos: [] });
+  const [form, setForm] = useState({ title: "", description: "", address: "", date: "", endDate: "", startTime: "", endTime: "", categories: [], photos: [], saleType: "yard" });
   const [errors, setErrors] = useState({});
   const [geoLoading, setGeoLoading] = useState(false);
   const [photoLoading, setPhotoLoading] = useState(false);
@@ -54,6 +55,7 @@ function CreatePageInner() {
         endTime: editingSale.endTime || "",
         categories: editingSale.tags || [],
         photos: editingSale.photos || [],
+        saleType: editingSale.saleType || "yard",
       });
       setFeaturedItems(editingSale.featuredItems || []);
       // Existing sale already has coords — keep them unless user changes the address
@@ -191,6 +193,7 @@ function CreatePageInner() {
       date: formatSaleDate(form.date, form.startTime, form.endTime, userTimeFormat, finalEndDate),
       photos: form.photos,
       tags: form.categories.length ? form.categories : ["General"],
+      saleType: form.saleType || "yard",
       coords: saleCoords,
       featuredItems: featuredItems.length ? featuredItems : undefined,
     };
@@ -250,6 +253,32 @@ function CreatePageInner() {
       </div>
 
       <FormField label="Title" required value={form.title} onChange={v => set("title", v)} error={errors.title} placeholder="e.g., Moving Sale — Everything Must Go!" />
+
+      {/* Sale Type */}
+      <div>
+        <label className="block font-medium text-stone-800 mb-1.5">Type of Sale</label>
+        <div className="grid grid-cols-2 gap-2">
+          {SALE_TYPES.map((t) => {
+            const Icon = t.icon;
+            const active = form.saleType === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => set("saleType", t.key)}
+                className={`flex items-center gap-2.5 p-3 rounded-xl border-2 transition text-left ${active ? "border-emerald-500 bg-emerald-50" : "border-stone-200 hover:border-stone-300"}`}
+              >
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${active ? "bg-emerald-500 text-white" : "bg-stone-100 text-stone-500"}`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className={`text-sm font-semibold ${active ? "text-emerald-700" : "text-stone-700"}`}>{t.label}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       <div>
         <label className="block font-medium text-stone-800 mb-1.5">Description <span className="text-rose-500">*</span></label>

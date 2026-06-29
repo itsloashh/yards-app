@@ -11,6 +11,7 @@ import ShareModal from "@/components/ShareModal";
 import ReportModal from "@/components/ReportModal";
 import ReviewsModal from "@/components/ReviewsModal";
 import Avatar from "@/components/Avatar";
+import { getSaleType } from "@/lib/saleTypes";
 
 export default function SaleDetailPage() {
   return (
@@ -233,6 +234,15 @@ function SaleDetailInner() {
             <h1 className="text-xl font-bold text-stone-800 font-display">{sale.title}</h1>
             {distText && <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-bold rounded-full whitespace-nowrap">{distText}</span>}
           </div>
+          {(() => {
+            const st = getSaleType(sale.saleType);
+            const STIcon = st.icon;
+            return (
+              <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-white text-xs font-bold" style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>
+                <STIcon className="w-3.5 h-3.5" /> {st.label}
+              </div>
+            );
+          })()}
           {sale.address && (
             <div className="flex items-center gap-1.5 text-stone-600 mt-2 text-sm">
               <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -262,19 +272,34 @@ function SaleDetailInner() {
         {/* Seller Card with Contact */}
         <div className="p-4 bg-stone-50 rounded-xl">
           <div className="flex items-center gap-4">
-            <Avatar name={sale.seller?.name} avatarUrl={sale.seller?.avatarUrl} avatarColor={sale.seller?.avatarColor} size={48} className="shadow text-lg" />
+            <Avatar
+              name={isOwner ? (profile?.name || sale.seller?.name) : sale.seller?.name}
+              avatarUrl={isOwner ? (profile?.avatar_url || sale.seller?.avatarUrl) : sale.seller?.avatarUrl}
+              avatarColor={isOwner ? (profile?.avatar_color || sale.seller?.avatarColor) : sale.seller?.avatarColor}
+              size={48} className="shadow text-lg" />
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-stone-800">{sale.seller?.name}</p>
-              <button onClick={() => setShowReviews(true)} className="flex items-center gap-2 text-sm text-stone-500 hover:text-emerald-600 transition">
-                {sale.seller?.reviewCount > 0 ? (
-                  <>
+              <p className="font-bold text-stone-800">{isOwner ? (profile?.name || sale.seller?.name) : sale.seller?.name}</p>
+              {isOwner ? (
+                sale.seller?.reviewCount > 0 ? (
+                  <button onClick={() => setShowReviews(true)} className="flex items-center gap-2 text-sm text-stone-500 hover:text-emerald-600 transition">
                     <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                     {Number(sale.seller.rating).toFixed(1)} · {sale.seller.reviewCount} review{sale.seller.reviewCount !== 1 ? "s" : ""}
-                  </>
+                  </button>
                 ) : (
-                  <span className="text-emerald-600 font-medium">Be the first to review</span>
-                )}
-              </button>
+                  <span className="text-sm text-stone-400">This is your sale</span>
+                )
+              ) : (
+                <button onClick={() => setShowReviews(true)} className="flex items-center gap-2 text-sm text-stone-500 hover:text-emerald-600 transition">
+                  {sale.seller?.reviewCount > 0 ? (
+                    <>
+                      <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                      {Number(sale.seller.rating).toFixed(1)} · {sale.seller.reviewCount} review{sale.seller.reviewCount !== 1 ? "s" : ""}
+                    </>
+                  ) : (
+                    <span className="text-emerald-600 font-medium">Be the first to review</span>
+                  )}
+                </button>
+              )}
             </div>
           </div>
           {sale.seller?.bio && (

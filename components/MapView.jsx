@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw, AlertCircle, X, ChevronLeft } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
+import { pinSvgForType } from "@/lib/saleTypes";
 
 export default function MapView({ sales }) {
   const router = useRouter();
@@ -106,10 +107,7 @@ export default function MapView({ sales }) {
           <div class="sale-marker-inner" style="background:${pinBg};width:${innerSize}px;height:${innerSize}px;${boosted ? "border-color:#fde68a;" : ""}">
             ${boosted
               ? `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z"/></svg>`
-              : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="12" y1="1" x2="12" y2="23"></line>
-              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-            </svg>`}
+              : pinSvgForType(sale.saleType)}
           </div>
           <div class="sale-marker-arrow" style="border-top-color:${arrowColor};"></div>
         </div>`,
