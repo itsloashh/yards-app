@@ -74,7 +74,7 @@ export default function WelcomeModal() {
       >
         {/* Header with gradient */}
         <div
-          className="relative px-6 pt-7 pb-6 text-white overflow-hidden"
+          className="relative px-6 pt-5 pb-6 text-white overflow-hidden"
           style={{ background: "linear-gradient(135deg, #065f46, #059669, #84cc16)" }}
         >
           {/* Decorative blobs */}
@@ -93,9 +93,9 @@ export default function WelcomeModal() {
             <img
               src="/logo-sign.png"
               alt="Yard$"
-              className="w-44 h-44 object-contain mb-3 drop-shadow-lg"
+              className="w-40 h-28 object-contain drop-shadow-lg"
             />
-            <h2 className="text-2xl font-bold font-display">{ANNOUNCEMENT.title}</h2>
+            <h2 className="text-2xl font-bold font-display mt-1">{ANNOUNCEMENT.title}</h2>
             <p className="text-white/85 text-sm mt-1">{ANNOUNCEMENT.subtitle}</p>
           </div>
         </div>
