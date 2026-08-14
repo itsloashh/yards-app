@@ -60,7 +60,7 @@ function GameDetail({ game, onClose }) {
           {game.images?.[0] ? (
             <img src={game.images[0]} alt={game.name} className="w-full h-44 object-cover" />
           ) : (
-            <div className="wood-panel w-full h-24 flex items-center justify-center"><Flag className="w-8 h-8 text-amber-50/40" /></div>
+            <div className="golf-panel w-full h-24 flex items-center justify-center"><Flag className="w-8 h-8 text-amber-50/50" /></div>
           )}
           <button onClick={onClose} className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/50 flex items-center justify-center">
             <X className="w-5 h-5 text-white" />

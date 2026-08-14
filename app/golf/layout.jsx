@@ -20,9 +20,9 @@ export default function GolfLayout({ children }) {
 
   return (
     <div className="md:max-w-md mx-auto min-h-[100dvh] h-[100dvh] relative shadow-2xl flex flex-col overflow-hidden golf-felt">
-      {/* Top bar — wood textured */}
-      <header className="wood-panel-dark relative shrink-0 shadow-lg">
-        <div className="wood-strip h-1 w-full opacity-60" />
+      {/* Top bar — deep fairway */}
+      <header className="golf-panel-dark relative shrink-0 shadow-lg">
+        <div className="sand-strip h-1 w-full opacity-70" />
         <div className="px-4 py-3 flex items-center justify-between">
           <Link href="/golf" className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-lg bg-amber-50/95 flex items-center justify-center shadow">
@@ -41,9 +41,9 @@ export default function GolfLayout({ children }) {
       {/* Content */}
       <main className="flex-1 overflow-y-auto no-scrollbar">{children}</main>
 
-      {/* Bottom nav — wood textured */}
-      <nav className="wood-panel-dark shrink-0 border-t border-black/30">
-        <div className="wood-strip h-0.5 w-full opacity-40" />
+      {/* Bottom nav — deep fairway */}
+      <nav className="golf-panel-dark shrink-0 border-t border-black/30">
+        <div className="sand-strip h-0.5 w-full opacity-50" />
         <div className="flex items-center justify-around px-2 py-2">
           {NAV.map((item) => {
             const Icon = item.icon;

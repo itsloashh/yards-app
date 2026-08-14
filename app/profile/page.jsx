@@ -113,9 +113,9 @@ function ProfileInner() {
         {/* Yard$ Golf — sub-brand entry */}
         <button
           onClick={() => { try { localStorage.setItem("yards_section", "golf"); } catch {} router.push("/golf"); }}
-          className="w-full flex items-center gap-3 p-4 rounded-2xl text-white shadow-md active:scale-[0.99] transition wood-panel relative overflow-hidden"
+          className="w-full flex items-center gap-3 p-4 rounded-2xl text-white shadow-md active:scale-[0.99] transition golf-panel relative overflow-hidden"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/70 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/40 to-transparent" />
           <div className="relative w-10 h-10 rounded-xl bg-amber-50/95 flex items-center justify-center shrink-0">
             <Flag className="w-5 h-5" style={{ color: "#065f46" }} />
           </div>

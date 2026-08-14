@@ -6,7 +6,7 @@ import { X, Sparkles, Check } from "lucide-react";
 // Bump this whenever you want everyone to see the welcome modal again
 // (e.g., after shipping a notable feature). Users who previously checked
 // "Don't show again" for an older version will still see this new one.
-const ANNOUNCEMENT_VERSION = "2026-06-29b";
+const ANNOUNCEMENT_VERSION = "2026-08-14-golf";
 
 // LocalStorage key — stores the last version the user dismissed
 const STORAGE_KEY = "yards_welcome_dismissed_version";
@@ -20,10 +20,11 @@ const ANNOUNCEMENT = {
   description:
     "Find local sales near you, save your favorites, and post your own — all on one live map.",
   whatsNew: [
+    "Introducing Yard$ Golf — our shop and signature golf games, open now",
+    "Pick your side on open: Yard$ or Yard$ Golf, and switch anytime from the menu",
     "New sale types — yard, estate, market & event, each with its own map pin",
     "Hosting an event? Your pin stands out in pulsing purple",
     "Rate & review sellers to build community trust",
-    "Add a profile photo to personalize your account",
     "Plan your Saturday route through your saved sales",
     "Share any sale to Instagram, TikTok, or with a link",
   ],
