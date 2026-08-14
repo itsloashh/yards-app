@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Globe2, Users, BarChart3, LogOut, ShieldCheck, Loader2, Lock, Menu, X, DollarSign, Flag } from "lucide-react";
+import { LayoutDashboard, Globe2, Users, BarChart3, LogOut, ShieldCheck, Loader2, Lock, Menu, X, DollarSign, Flag, ShoppingBag, BookOpen } from "lucide-react";
 import { useAdminAuth } from "@/lib/admin";
 import { supabase } from "@/lib/supabase";
 
@@ -13,6 +13,8 @@ const NAV = [
   { href: "/admin/regions", label: "Regions", icon: BarChart3 },
   { href: "/admin/revenue", label: "Revenue", icon: DollarSign },
   { href: "/admin/reports", label: "Reports", icon: Flag },
+  { href: "/admin/golf-shop", label: "Golf Shop", icon: ShoppingBag },
+  { href: "/admin/golf-games", label: "Golf Games", icon: BookOpen },
 ];
 
 export default function AdminLayout({ children }) {

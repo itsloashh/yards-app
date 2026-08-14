@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, Calendar, CheckCircle, MessageCircle, Edit, ShieldCheck, Loader2, Rocket, Camera, Star } from "lucide-react";
+import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, Calendar, CheckCircle, MessageCircle, Edit, ShieldCheck, Loader2, Rocket, Camera, Star, Flag, ChevronRight } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { AVATAR_COLORS } from "@/lib/constants";
 import { formatSaleDate } from "@/lib/timeFormat";
@@ -109,6 +109,23 @@ function ProfileInner() {
         <PBtn icon={Plus} color="emerald" label="Post a Yard Sale" onClick={() => router.push("/create")} />
         <PBtn icon={Eye} color="stone" label={`My Sales (${userSales.length})`} onClick={() => setViewingSales(true)} />
         <PBtn icon={MessageCircle} color="stone" label="Contact Us" onClick={() => router.push("/contact")} />
+
+        {/* Yard$ Golf — sub-brand entry */}
+        <button
+          onClick={() => { try { localStorage.setItem("yards_section", "golf"); } catch {} router.push("/golf"); }}
+          className="w-full flex items-center gap-3 p-4 rounded-2xl text-white shadow-md active:scale-[0.99] transition wood-panel relative overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/70 to-transparent" />
+          <div className="relative w-10 h-10 rounded-xl bg-amber-50/95 flex items-center justify-center shrink-0">
+            <Flag className="w-5 h-5" style={{ color: "#065f46" }} />
+          </div>
+          <div className="relative flex-1 text-left">
+            <p className="font-bold">Yard$ <span className="text-lime-300">Golf</span></p>
+            <p className="text-amber-50/80 text-xs">Shop & games for golf lovers</p>
+          </div>
+          <ChevronRight className="relative w-5 h-5 text-amber-50/70" />
+        </button>
+
         {profile?.role === "admin" && (
           <PBtn icon={ShieldCheck} color="emerald" label="Admin Dashboard" onClick={() => router.push("/admin")} />
         )}
