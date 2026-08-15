@@ -11,45 +11,46 @@ export default function GolfHome() {
 
   return (
     <div className="pb-8">
-      {/* Hero — fairway panel */}
+      {/* Hero — striped fairway panel with the Yard$ Golf lockup */}
       <section className="golf-panel relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/25 via-transparent to-emerald-950/45" />
-        <div className="relative px-6 py-10 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-amber-50/95 flex items-center justify-center shadow-xl mx-auto mb-4">
-            <Flag className="w-8 h-8" style={{ color: "#065f46" }} />
-          </div>
-          <h1 className="text-white text-3xl font-bold font-display">Yard$ <span className="text-lime-300">Golf</span></h1>
-          <p className="text-amber-50/85 text-sm mt-2 max-w-xs mx-auto leading-relaxed">
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/20 via-transparent to-emerald-950/50" />
+        <div className="relative px-6 pt-7 pb-9 text-center">
+          <img
+            src="/golf-logo.png"
+            alt="Yard$ Golf"
+            className="w-56 max-w-[72%] h-auto mx-auto drop-shadow-[0_6px_14px_rgba(0,0,0,0.55)]"
+          />
+          <p className="text-amber-50/90 text-sm mt-4 max-w-xs mx-auto leading-relaxed">
             A home for players, shoppers, and genuine golf lovers. Gear up in the shop and play our signature games.
           </p>
         </div>
       </section>
 
-      {/* Quick links */}
+      {/* Quick links — raised, flat surfaces so they read as buttons */}
       <section className="px-4 -mt-5 relative z-10 space-y-3">
-        <Link href="/golf/shop" className="block rounded-2xl overflow-hidden shadow-lg golf-panel ring-1 ring-lime-200/15 active:scale-[0.99] transition">
-          <div className="bg-gradient-to-r from-emerald-950/35 to-transparent px-5 py-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-50/95 flex items-center justify-center shrink-0">
+        <Link href="/golf/shop" className="block rounded-2xl overflow-hidden golf-card-raised active:scale-[0.99] transition">
+          <div className="px-5 py-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-amber-50/95 flex items-center justify-center shrink-0 shadow">
               <ShoppingBag className="w-6 h-6" style={{ color: "#065f46" }} />
             </div>
             <div className="flex-1">
               <h2 className="text-white font-bold text-lg">The Shop</h2>
-              <p className="text-amber-50/80 text-xs">Apparel, gear & accessories</p>
+              <p className="text-amber-50/80 text-xs">Apparel, gear &amp; accessories</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-amber-50/70" />
+            <ChevronRight className="w-5 h-5 text-lime-200/80" />
           </div>
         </Link>
 
-        <Link href="/golf/games" className="block rounded-2xl overflow-hidden shadow-lg golf-panel ring-1 ring-lime-200/15 active:scale-[0.99] transition">
-          <div className="bg-gradient-to-r from-emerald-950/35 to-transparent px-5 py-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-50/95 flex items-center justify-center shrink-0">
+        <Link href="/golf/games" className="block rounded-2xl overflow-hidden golf-card-raised active:scale-[0.99] transition">
+          <div className="px-5 py-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-amber-50/95 flex items-center justify-center shrink-0 shadow">
               <BookOpen className="w-6 h-6" style={{ color: "#065f46" }} />
             </div>
             <div className="flex-1">
-              <h2 className="text-white font-bold text-lg">Games & Rules</h2>
+              <h2 className="text-white font-bold text-lg">Games &amp; Rules</h2>
               <p className="text-amber-50/80 text-xs">Yard$ signature golf games</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-amber-50/70" />
+            <ChevronRight className="w-5 h-5 text-lime-200/80" />
           </div>
         </Link>
       </section>
@@ -65,7 +66,7 @@ export default function GolfHome() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             {featured.map((p) => (
-              <Link key={p.id} href="/golf/shop" className="block rounded-2xl overflow-hidden bg-emerald-950/40 border border-amber-50/10 active:scale-[0.98] transition">
+              <Link key={p.id} href="/golf/shop" className="block rounded-2xl overflow-hidden golf-card active:scale-[0.98] transition">
                 {p.images?.[0] ? (
                   <img src={p.images[0]} alt={p.name} className="w-full h-32 object-cover" />
                 ) : (
@@ -87,13 +88,13 @@ export default function GolfHome() {
           <h3 className="text-white font-bold font-display mb-3">Popular Games</h3>
           <div className="space-y-2">
             {games.slice(0, 3).map((g) => (
-              <Link key={g.id} href="/golf/games" className="block rounded-xl bg-emerald-950/40 border border-amber-50/10 px-4 py-3 active:scale-[0.99] transition">
+              <Link key={g.id} href="/golf/games" className="block rounded-xl golf-card px-4 py-3 active:scale-[0.99] transition">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-white font-semibold text-sm">{g.name}</p>
                     {g.tagline && <p className="text-amber-50/70 text-xs mt-0.5">{g.tagline}</p>}
                   </div>
-                  <ChevronRight className="w-4 h-4 text-amber-50/50" />
+                  <ChevronRight className="w-4 h-4 text-lime-200/60" />
                 </div>
               </Link>
             ))}

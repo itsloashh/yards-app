@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Loader2, Plus, Trash2, Edit, X, BookOpen, Upload, Check } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit, X, BookOpen, Upload, Check, Image as ImageIcon } from "lucide-react";
 import { useGolfAdmin, saveGolfGame, deleteGolfGame, uploadGolfImage } from "@/lib/golf";
 
 export default function AdminGolfGames() {
@@ -31,7 +31,7 @@ export default function AdminGolfGames() {
         <div className="space-y-2">
           {items.map((g) => (
             <div key={g.id} className="bg-stone-900 border border-stone-800 rounded-2xl p-4 flex items-center gap-4">
-              {g.images?.[0] ? <img src={g.images[0]} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" /> : <div className="w-14 h-14 rounded-xl bg-stone-800 flex items-center justify-center shrink-0 text-xl">⛳</div>}
+              {(g.header_image || g.rules_images?.[0] || g.images?.[0]) ? <img src={g.header_image || g.rules_images?.[0] || g.images?.[0]} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" /> : <div className="w-14 h-14 rounded-xl bg-stone-800 flex items-center justify-center shrink-0 text-xl">⛳</div>}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-stone-100 font-semibold truncate">{g.name}</p>
@@ -61,27 +61,52 @@ function GameEditor({ game, onClose, onSaved }) {
     players: game.players || "",
     difficulty: game.difficulty || "",
     rules: game.rules || "",
-    images: game.images || [],
+    header_image: game.header_image || "",
+    rules_images: game.rules_images?.length ? game.rules_images : (game.images || []),
     sort_order: game.sort_order || 0,
     active: game.active !== false,
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingHeader, setUploadingHeader] = useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const addImages = async (e) => {
+  const toBase64 = (file) => new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(file); });
+
+  // Header banner — a single photo, used on the card + detail header
+  const uploadHeader = async (e) => {
+    const file = (e.target.files || [])[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    setUploadingHeader(true);
+    const url = await uploadGolfImage(await toBase64(file), "games/headers");
+    if (url) set("header_image", url);
+    setUploadingHeader(false);
+    e.target.value = "";
+  };
+
+  // Rule sheets — many, shown as zoomable references (never used as the header)
+  const addRuleSheets = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     setUploading(true);
+    const added = [];
     for (const file of files) {
       if (!file.type.startsWith("image/")) continue;
-      const base64 = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(file); });
-      const url = await uploadGolfImage(base64, "games");
-      if (url) set("images", [...form.images, url]);
+      const url = await uploadGolfImage(await toBase64(file), "games/rules");
+      if (url) added.push(url);
     }
+    if (added.length) setForm((f) => ({ ...f, rules_images: [...f.rules_images, ...added] }));
     setUploading(false);
+    e.target.value = "";
   };
-  const removeImage = (i) => set("images", form.images.filter((_, idx) => idx !== i));
+  const removeRuleSheet = (i) => set("rules_images", form.rules_images.filter((_, idx) => idx !== i));
+  const moveRuleSheet = (i, dir) => {
+    const next = [...form.rules_images];
+    const j = i + dir;
+    if (j < 0 || j >= next.length) return;
+    [next[i], next[j]] = [next[j], next[i]];
+    set("rules_images", next);
+  };
 
   const save = async () => {
     if (!form.name.trim()) { alert("Game needs a name."); return; }
@@ -115,19 +140,46 @@ function GameEditor({ game, onClose, onSaved }) {
           </div>
           <Field label="Rules"><textarea value={form.rules} onChange={(e) => set("rules", e.target.value)} rows={8} className="admin-input resize-none" placeholder="Write the full rules here. Line breaks are preserved." /></Field>
 
-          <div>
-            <label className="block text-stone-400 text-sm mb-1.5">Reference images <span className="text-stone-600">(first image is the cover)</span></label>
+          {/* ── Header banner (single) ── */}
+          <div className="border border-stone-800 rounded-xl p-3 bg-stone-950/40">
+            <label className="block text-stone-300 text-sm font-medium mb-0.5">Header image</label>
+            <p className="text-stone-500 text-xs mb-2">One banner photo shown on the game card and detail header. Rule sheets are never used here.</p>
+            {form.header_image ? (
+              <div className="relative w-full h-32">
+                <img src={form.header_image} alt="" className="w-full h-full object-cover rounded-lg" />
+                <button onClick={() => set("header_image", "")} className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center shadow"><X className="w-3.5 h-3.5 text-white" /></button>
+                <label className="absolute bottom-2 right-2 text-[11px] bg-black/70 text-white px-2.5 py-1.5 rounded-full cursor-pointer hover:bg-black/85 transition">
+                  {uploadingHeader ? "Uploading…" : "Replace"}
+                  <input type="file" accept="image/*" onChange={uploadHeader} className="hidden" disabled={uploadingHeader} />
+                </label>
+              </div>
+            ) : (
+              <label className="w-full h-24 border-2 border-dashed border-stone-700 rounded-lg flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-emerald-500 transition">
+                {uploadingHeader ? <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" /> : <ImageIcon className="w-5 h-5 text-stone-500" />}
+                <span className="text-stone-500 text-xs">Upload header photo</span>
+                <input type="file" accept="image/*" onChange={uploadHeader} className="hidden" disabled={uploadingHeader} />
+              </label>
+            )}
+          </div>
+
+          {/* ── Rule sheets (many, zoomable) ── */}
+          <div className="border border-stone-800 rounded-xl p-3 bg-stone-950/40">
+            <label className="block text-stone-300 text-sm font-medium mb-0.5">Rule sheet images</label>
+            <p className="text-stone-500 text-xs mb-2">Reference sheets players tap to open and zoom into. Order below is the order shown.</p>
             <div className="flex flex-wrap gap-2">
-              {form.images.map((img, i) => (
+              {form.rules_images.map((img, i) => (
                 <div key={i} className="relative w-20 h-20">
-                  <img src={img} alt="" className="w-full h-full object-cover rounded-lg" />
-                  {i === 0 && <span className="absolute bottom-0.5 left-0.5 text-[9px] bg-emerald-500 text-white px-1 rounded">cover</span>}
-                  <button onClick={() => removeImage(i)} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center"><X className="w-3 h-3 text-white" /></button>
+                  <img src={img} alt="" className="w-full h-full object-cover rounded-lg border border-stone-700" />
+                  <button onClick={() => removeRuleSheet(i)} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center"><X className="w-3 h-3 text-white" /></button>
+                  <div className="absolute bottom-0.5 left-0.5 flex gap-0.5">
+                    <button onClick={() => moveRuleSheet(i, -1)} disabled={i === 0} className="w-5 h-5 bg-black/75 rounded text-white text-[11px] leading-none disabled:opacity-30">‹</button>
+                    <button onClick={() => moveRuleSheet(i, 1)} disabled={i === form.rules_images.length - 1} className="w-5 h-5 bg-black/75 rounded text-white text-[11px] leading-none disabled:opacity-30">›</button>
+                  </div>
                 </div>
               ))}
               <label className="w-20 h-20 border-2 border-dashed border-stone-700 rounded-lg flex items-center justify-center cursor-pointer hover:border-emerald-500 transition">
                 {uploading ? <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" /> : <Upload className="w-5 h-5 text-stone-500" />}
-                <input type="file" accept="image/*" multiple onChange={addImages} className="hidden" disabled={uploading} />
+                <input type="file" accept="image/*" multiple onChange={addRuleSheets} className="hidden" disabled={uploading} />
               </label>
             </div>
           </div>

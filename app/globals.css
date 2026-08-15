@@ -90,6 +90,33 @@ body {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* ─── Surfaces that sit ON the striped felt ───
+   These are deliberately FLAT (no mow stripes). The texture contrast against
+   the striped background is what separates them, alongside value + hairline. */
+
+/* Header & bottom nav — darkest, reads as app chrome */
+.golf-chrome {
+  background-color: #041e12;
+  background-image: linear-gradient(180deg, #06281a, #03170e);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+}
+
+/* Content cards — recessed panel */
+.golf-card {
+  background-color: #063521;
+  background-image: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0) 62%);
+  border: 1px solid rgba(190,242,100,0.16);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+/* Primary tappable buttons — lifted, lighter than the felt */
+.golf-card-raised {
+  background-color: #0f6b41;
+  background-image: linear-gradient(150deg, #14784a, #0b5533 70%, #0a4d2f);
+  border: 1px solid rgba(190,242,100,0.28);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
 /* ─── YARD$ GOLF — fairway aesthetic ─── */
 /* CSS-only mown-turf stripes: soft diagonal bands like a freshly cut fairway.
    Replaces the old wood-grain look with a clean course/clubhouse palette. */
@@ -117,6 +144,35 @@ body {
 .sand-strip {
   background-image: linear-gradient(90deg,
     #cdb887, #efe4c6 30%, #d8c69a 55%, #f2e8cd 78%, #cdb887);
+}
+
+/* ── Layering above the fairway ──
+   The striped felt is busy, so chrome and cards are deliberately UN-striped.
+   Solid surfaces + a light hairline border are what separate them. */
+
+/* Header & bottom nav — darkest layer, sits above everything */
+.golf-chrome {
+  background-color: #04241a;
+  background-image: linear-gradient(180deg, #06321f, #031b12);
+}
+
+/* Raised card — lighter than the felt, pops forward (primary nav buttons) */
+.golf-card-raised {
+  background-image: linear-gradient(150deg, #17784b, #0e5735 55%, #0a4a2d);
+  border: 1px solid rgba(190, 242, 100, 0.28);
+  box-shadow:
+    0 10px 26px -10px rgba(0, 0, 0, 0.75),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* Content card — darker than the felt, recedes but stays clearly bounded */
+.golf-card {
+  background-color: rgba(5, 42, 26, 0.88);
+  background-image: linear-gradient(160deg, rgba(19, 94, 59, 0.45), rgba(4, 30, 19, 0.75));
+  border: 1px solid rgba(233, 244, 214, 0.16);
+  box-shadow:
+    0 8px 22px -10px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 /* Golf green felt background */

@@ -26,7 +26,7 @@ export default function GolfShop() {
       ) : (
         <div className="grid grid-cols-2 gap-3 px-4">
           {products.map((p) => (
-            <button key={p.id} onClick={() => setSelected(p)} className="text-left rounded-2xl overflow-hidden bg-emerald-950/40 border border-amber-50/10 active:scale-[0.98] transition">
+            <button key={p.id} onClick={() => setSelected(p)} className="text-left rounded-2xl overflow-hidden golf-card active:scale-[0.98] transition">
               {p.images?.[0] ? (
                 <img src={p.images[0]} alt={p.name} className="w-full h-40 object-cover" />
               ) : (
@@ -90,7 +90,7 @@ function ProductDetail({ product, onClose }) {
         </div>
 
         {/* Buy button — purchasing wired in next build */}
-        <div className="p-5 pt-3 border-t border-amber-50/10 shrink-0">
+        <div className="p-5 pt-3 border-t border-lime-200/15 shrink-0">
           {product.in_stock ? (
             <button
               onClick={() => alert("Checkout is coming soon! Purchasing will be enabled shortly.")}

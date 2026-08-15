@@ -61,10 +61,8 @@ export default function BrandChooser({ onChoose }) {
                 <Flag className="w-7 h-7" style={{ color: "#065f46" }} />
               </div>
               <div className="flex-1">
-                <h2 className="text-white text-2xl font-bold font-display flex items-center gap-2">
-                  Yard$ <span className="text-lime-300">Golf</span>
-                </h2>
-                <p className="text-amber-50/90 text-sm mt-0.5">The shop &amp; games for golf lovers</p>
+                <img src="/golf-logo-sm.png" alt="Yard$ Golf" className="h-9 w-auto object-contain" />
+                <p className="text-amber-50/90 text-sm mt-1.5">The shop &amp; games for golf lovers</p>
               </div>
             </div>
             {/* sand-bunker accent along the bottom edge */}
