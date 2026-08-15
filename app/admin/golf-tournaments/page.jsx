@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Loader2, Plus, Trash2, X, Trophy, Check, Users, Zap, Flag, ChevronLeft, Tag as TagIcon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import AdminPowerUpCard from "@/components/golf/AdminPowerUpCard";
+import { defaultColorFor } from "@/lib/powerUpStyles";
 
 export default function AdminTournaments() {
   const [items, setItems] = useState([]);
@@ -163,7 +165,7 @@ function TournamentEditor({ id, onBack }) {
       {tab === "setup" && <SetupTab t={t} saveT={saveT} />}
       {tab === "teams" && <TeamsTab id={id} teams={teams} players={players} reload={reload} />}
       {tab === "holes" && <HolesTab id={id} holes={holes} reload={reload} />}
-      {tab === "power" && <PowerTab id={id} powerUps={powerUps} reload={reload} />}
+      {tab === "power" && <PowerTab id={id} powerUps={powerUps} holes={holes} reload={reload} />}
     </div>
   );
 }
@@ -323,51 +325,89 @@ function HolesTab({ id, holes, reload }) {
   );
 }
 
-function PowerTab({ id, powerUps, reload }) {
-  const add = async () => {
+function PowerTab({ id, powerUps, holes, reload }) {
+  const holeCount = holes.length || 18;
+  const [saving, setSaving] = useState(false);
+
+  const add = async (kind) => {
+    setSaving(true);
     await supabase.from("golf_power_ups").insert({
-      tournament_id: id, name: "New Power-Up", uses_per_team: 1, sort_order: powerUps.length,
+      tournament_id: id,
+      name: kind === "hazard" ? "New Caution" : "New Power-Up",
+      kind,
+      icon: kind === "hazard" ? "\u26A0\uFE0F" : "\u26A1",
+      color: defaultColorFor(kind),
+      uses_per_team: 1,
+      enabled: true,
+      sort_order: powerUps.length,
     });
+    setSaving(false);
     reload();
   };
-  const update = async (puId, patch) => {
+
+  // Debounced-ish: write straight through, the card holds its own text state
+  const change = async (puId, patch) => {
     await supabase.from("golf_power_ups").update(patch).eq("id", puId);
     reload();
   };
+
   const del = async (puId) => {
-    if (!confirm("Delete this power-up?")) return;
+    if (!confirm("Delete this card?")) return;
     await supabase.from("golf_power_ups").delete().eq("id", puId);
     reload();
   };
 
+  const boosts = powerUps.filter((p) => p.kind !== "hazard");
+  const cautions = powerUps.filter((p) => p.kind === "hazard");
+
   return (
-    <div className="space-y-3">
-      <button onClick={add} className="px-4 py-2.5 rounded-xl text-sm font-medium bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center gap-2">
-        <Plus className="w-4 h-4" /> Add Power-Up
-      </button>
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => add("power_up")} disabled={saving}
+          className="px-4 py-2.5 rounded-xl text-sm font-medium bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 transition flex items-center gap-2">
+          <Plus className="w-4 h-4" /> Add Power-Up
+        </button>
+        <button onClick={() => add("hazard")} disabled={saving}
+          className="px-4 py-2.5 rounded-xl text-sm font-medium bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 transition flex items-center gap-2">
+          <Plus className="w-4 h-4" /> Add Caution
+        </button>
+      </div>
+
       <p className="text-stone-500 text-xs">
-        Each team gets its own allowance. Players spend them from the Power-Ups tab and everyone sees what's been used.
+        Tap a card to expand it. The toggle switches it on or off for the round without deleting it —
+        players only see cards that are on.
       </p>
 
-      {powerUps.map((pu) => (
-        <div key={pu.id} className="bg-stone-900 border border-stone-800 rounded-2xl p-4 space-y-3">
-          <div className="flex gap-2">
-            <input defaultValue={pu.icon || ""} placeholder="⚡" className="admin-input w-16 text-center shrink-0"
-              onBlur={(e) => update(pu.id, { icon: e.target.value })} />
-            <input defaultValue={pu.name} className="admin-input flex-1"
-              onBlur={(e) => update(pu.id, { name: e.target.value })} />
-            <button onClick={() => del(pu.id)} className="p-2 text-stone-500 hover:text-rose-400 shrink-0"><Trash2 className="w-4 h-4" /></button>
-          </div>
-          <textarea defaultValue={pu.description || ""} rows={2} placeholder="What does it do?" className="admin-input resize-none"
-            onBlur={(e) => update(pu.id, { description: e.target.value })} />
-          <F label="Uses per team" small>
-            <input defaultValue={pu.uses_per_team} inputMode="numeric" className="admin-input w-24"
-              onBlur={(e) => update(pu.id, { uses_per_team: parseInt(e.target.value) || 1 })} />
-          </F>
-        </div>
-      ))}
+      <Section title="Power-Ups" count={boosts.length}>
+        {boosts.map((pu) => (
+          <AdminPowerUpCard key={pu.id} card={pu} holeCount={holeCount} onChange={change} onDelete={del} />
+        ))}
+        {boosts.length === 0 && <Empty text="No power-ups yet." />}
+      </Section>
+
+      <Section title="Cautions" count={cautions.length}>
+        {cautions.map((pu) => (
+          <AdminPowerUpCard key={pu.id} card={pu} holeCount={holeCount} onChange={change} onDelete={del} />
+        ))}
+        {cautions.length === 0 && <Empty text="No cautions yet." />}
+      </Section>
     </div>
   );
+}
+
+function Section({ title, count, children }) {
+  return (
+    <div>
+      <h3 className="text-stone-300 font-semibold text-sm mb-2">
+        {title} <span className="text-stone-600">({count})</span>
+      </h3>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function Empty({ text }) {
+  return <p className="text-stone-600 text-xs bg-stone-900 border border-stone-800 rounded-xl px-4 py-6 text-center">{text}</p>;
 }
 
 function F({ label, children, small }) {
