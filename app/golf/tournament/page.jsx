@@ -85,7 +85,7 @@ export default function TournamentPage() {
         </div>
       </div>
 
-      {tab === "info" && <RoundInfo round={round} />}
+      {tab === "info" && <RoundInfo round={round} state={state} myTeamId={myTeamId} />}
       {tab === "card" && <Scorecard round={round} liveTeam={liveTeam} onSaved={refresh} />}
       {tab === "board" && <Leaderboard state={state} myTeamId={myTeamId} lastUpdate={lastUpdate} />}
       {tab === "power" && <PowerUps round={round} state={state} myTeamId={myTeamId} onChanged={refresh} />}

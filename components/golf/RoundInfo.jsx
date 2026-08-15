@@ -1,7 +1,8 @@
 "use client";
-import { Clock, Flag, Users, Swords, Target, MapPin } from "lucide-react";
+import { Clock, Flag, Users, Swords, Target, MapPin, Zap, AlertTriangle } from "lucide-react";
+import { colorOf, ruleLabel } from "@/lib/powerUpStyles";
 
-export default function RoundInfo({ round }) {
+export default function RoundInfo({ round, state, myTeamId }) {
   const { tournament, team, player, partners = [], competitors = [], holes = [] } = round;
   const challengeHoles = holes.filter((h) => h.challenge && h.challenge.trim());
 
@@ -39,6 +40,9 @@ export default function RoundInfo({ round }) {
           )}
         </div>
       </div>
+
+      {/* Inventory */}
+      <Inventory round={round} state={state} myTeamId={myTeamId} />
 
       {/* Playing with */}
       <div className="golf-card rounded-2xl p-5">
@@ -91,6 +95,78 @@ export default function RoundInfo({ round }) {
           <p className="text-amber-50/85 text-sm whitespace-pre-wrap leading-relaxed">{tournament.notes}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+function Inventory({ round, state, myTeamId }) {
+  const cards = (state?.power_ups || round?.power_ups || []).filter((c) => c.enabled !== false);
+  const myTeam = (state?.teams || []).find((t) => t.id === myTeamId);
+  const uses = myTeam?.power_up_uses || [];
+
+  if (cards.length === 0) return null;
+
+  const usedFor = (id) => uses.filter((u) => u.power_up_id === id);
+
+  return (
+    <div className="golf-card rounded-2xl p-5">
+      <h2 className="text-white font-bold flex items-center gap-2">
+        <Zap className="w-4 h-4 text-lime-300" /> Your Inventory
+      </h2>
+      <p className="text-amber-50/55 text-xs mt-0.5 mb-3">What your team has left to play.</p>
+
+      <div className="space-y-2">
+        {cards.map((card) => {
+          const c = colorOf(card.color);
+          const spentUses = usedFor(card.id);
+          const total = card.uses_per_team || 1;
+          const left = Math.max(0, total - spentUses.length);
+          const hazard = card.kind === "hazard";
+
+          return (
+            <div key={card.id} className={`rounded-xl border ${left > 0 ? c.ring : "border-lime-200/10"} ${left > 0 ? c.tint : "bg-emerald-950/40"} px-3 py-2.5`}>
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-lg bg-emerald-950/60 flex items-center justify-center shrink-0 overflow-hidden">
+                  <span className="text-base leading-none truncate px-0.5">
+                    {card.icon || (hazard ? "⚠️" : "⚡")}
+                  </span>
+                </span>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-semibold truncate flex items-center gap-1.5">
+                    {hazard && <AlertTriangle className="w-3 h-3 text-rose-300 shrink-0" />}
+                    {card.name}
+                  </p>
+                  <p className="text-amber-50/45 text-[11px]">{ruleLabel(card)}</p>
+                </div>
+
+                {/* token pips */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {Array.from({ length: Math.min(total, 5) }, (_, i) => (
+                    <span
+                      key={i}
+                      className={`w-2 h-2 rounded-full ${i < left ? c.dot : "bg-amber-50/15"}`}
+                    />
+                  ))}
+                  <span className={`ml-1 text-xs font-bold ${left > 0 ? c.text : "text-amber-50/35"}`}>
+                    {left}/{total}
+                  </span>
+                </div>
+              </div>
+
+              {spentUses.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2 pl-10">
+                  {spentUses.map((u) => (
+                    <span key={u.id} className="text-[10px] bg-emerald-950/70 border border-lime-200/12 text-amber-50/60 px-1.5 py-0.5 rounded-full">
+                      Hole {u.hole_number || "?"}{u.option_label ? ` · ${u.option_label}` : ""}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

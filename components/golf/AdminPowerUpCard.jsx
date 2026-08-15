@@ -27,8 +27,10 @@ export default function AdminPowerUpCard({ card, holeCount = 18, onChange, onDel
     <div className={`rounded-2xl border bg-stone-900 transition ${card.enabled === false ? "border-stone-800 opacity-60" : c.ring}`}>
       {/* ── Header row ── */}
       <div className="p-4 flex items-start gap-3">
-        <div className={`w-12 h-12 rounded-xl ${c.tint} border ${c.ring} flex items-center justify-center shrink-0 text-2xl`}>
-          {card.icon || (hazard ? "⚠️" : "⚡")}
+        <div className={`w-12 h-12 rounded-xl ${c.tint} border ${c.ring} flex items-center justify-center shrink-0 overflow-hidden`}>
+          <span className="text-2xl leading-none truncate px-1 max-w-full">
+            {card.icon || (hazard ? "⚠️" : "⚡")}
+          </span>
         </div>
 
         <div className="flex-1 min-w-0">
@@ -48,6 +50,11 @@ export default function AdminPowerUpCard({ card, holeCount = 18, onChange, onDel
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-800 text-stone-400">
               {ruleLabel(card)}
             </span>
+            {(card.options || []).length > 0 && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${c.chip}`}>
+                {card.options.length} choices
+              </span>
+            )}
           </div>
         </div>
 
@@ -90,12 +97,14 @@ export default function AdminPowerUpCard({ card, holeCount = 18, onChange, onDel
             </div>
 
             <div>
-              <L>Icon</L>
+              <L>Icon <span className="text-stone-600">(emoji only)</span></L>
               <input
                 value={card.icon || ""}
-                onChange={(e) => patch({ icon: e.target.value })}
+                onChange={(e) => patch({ icon: e.target.value.slice(0, 4) })}
                 placeholder="⚡"
-                className="admin-input w-20 text-center text-lg"
+                maxLength={4}
+                style={{ width: "5rem" }}
+                className="admin-input text-center text-lg"
               />
             </div>
 
@@ -105,7 +114,8 @@ export default function AdminPowerUpCard({ card, holeCount = 18, onChange, onDel
                 value={card.uses_per_team ?? 1}
                 onChange={(e) => patch({ uses_per_team: parseInt(e.target.value) || 1 })}
                 inputMode="numeric"
-                className="admin-input w-24"
+                style={{ width: "6rem" }}
+                className="admin-input"
               />
             </div>
           </div>
@@ -138,6 +148,12 @@ export default function AdminPowerUpCard({ card, holeCount = 18, onChange, onDel
               className="admin-input resize-none"
             />
           </div>
+
+          {/* ── Player-choice options ── */}
+          <OptionsEditor
+            options={card.options || []}
+            onChange={(next) => patch({ options: next })}
+          />
 
           {/* ── Hole rules ── */}
           <div className="bg-stone-950/60 border border-stone-800 rounded-xl p-3">
@@ -199,6 +215,73 @@ export default function AdminPowerUpCard({ card, holeCount = 18, onChange, onDel
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function OptionsEditor({ options, onChange }) {
+  const [draft, setDraft] = useState("");
+
+  const add = () => {
+    const v = draft.trim();
+    if (!v || options.includes(v)) { setDraft(""); return; }
+    onChange([...options, v]);
+    setDraft("");
+  };
+  const remove = (i) => onChange(options.filter((_, idx) => idx !== i));
+  const move = (i, dir) => {
+    const next = [...options];
+    const j = i + dir;
+    if (j < 0 || j >= next.length) return;
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+  };
+
+  return (
+    <div className="bg-stone-950/60 border border-stone-800 rounded-xl p-3">
+      <L>Player choices <span className="text-stone-600">(optional)</span></L>
+      <p className="text-stone-500 text-[11px] mb-2.5">
+        Add choices and the player must pick one when they claim the card — use this for
+        something like Hot Streak, where the reward is a menu. Leave empty for a plain card.
+      </p>
+
+      {options.length > 0 && (
+        <div className="space-y-1.5 mb-2.5">
+          {options.map((opt, i) => (
+            <div key={i} className="flex items-center gap-2 bg-stone-900 border border-stone-800 rounded-lg px-2.5 py-2">
+              <span className="w-5 h-5 rounded bg-stone-800 text-stone-400 text-[10px] font-bold flex items-center justify-center shrink-0">
+                {i + 1}
+              </span>
+              <span className="text-stone-200 text-sm flex-1 min-w-0 break-words">{opt}</span>
+              <button onClick={() => move(i, -1)} disabled={i === 0}
+                className="text-stone-600 hover:text-white disabled:opacity-25 text-xs px-1">↑</button>
+              <button onClick={() => move(i, 1)} disabled={i === options.length - 1}
+                className="text-stone-600 hover:text-white disabled:opacity-25 text-xs px-1">↓</button>
+              <button onClick={() => remove(i)} className="text-stone-600 hover:text-rose-400 shrink-0">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+          placeholder="e.g. Replay one shot"
+          className="admin-input flex-1"
+        />
+        <button
+          onClick={add}
+          disabled={!draft.trim()}
+          style={{ width: "5rem" }}
+          className="shrink-0 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-sm font-medium disabled:opacity-40"
+        >
+          Add
+        </button>
+      </div>
     </div>
   );
 }

@@ -29,12 +29,20 @@ export default function PowerUps({ round, state, myTeamId, onChanged }) {
     return m;
   }, [myUses]);
 
+  const [picked, setPicked] = useState({});   // cardId -> chosen option
+
   const claim = async (card) => {
+    const opts = card.options || [];
+    const choice = picked[card.id] || "";
+    if (opts.length && !choice) { setError(`Pick an option on ${card.name} first`); return; }
     setBusy(card.id); setError("");
-    const res = await usePowerUp(tag, card.id, hole);
+    const res = await usePowerUp(tag, card.id, hole, choice);
     setBusy(null);
     if (!res.ok) setError(res.error || "Could not use that");
-    else onChanged?.();
+    else {
+      setPicked((p) => ({ ...p, [card.id]: "" }));
+      onChanged?.();
+    }
   };
 
   const undo = async (useId) => {
@@ -88,6 +96,8 @@ export default function PowerUps({ round, state, myTeamId, onChanged }) {
                   used={usedCount[card.id] || 0}
                   mine={myUses.filter((u) => u.power_up_id === card.id)}
                   busy={busy} onClaim={claim} onUndo={undo}
+                  picked={picked[card.id] || ""}
+                  onPick={(v) => setPicked((p) => ({ ...p, [card.id]: v }))}
                 />
               ))}
             </CardGroup>
@@ -101,6 +111,8 @@ export default function PowerUps({ round, state, myTeamId, onChanged }) {
                   used={usedCount[card.id] || 0}
                   mine={myUses.filter((u) => u.power_up_id === card.id)}
                   busy={busy} onClaim={claim} onUndo={undo}
+                  picked={picked[card.id] || ""}
+                  onPick={(v) => setPicked((p) => ({ ...p, [card.id]: v }))}
                 />
               ))}
             </CardGroup>
@@ -124,22 +136,19 @@ function CardGroup({ icon: Icon, title, children }) {
   );
 }
 
-function ClaimCard({ card, hole, holes, used, mine, busy, onClaim, onUndo }) {
+function ClaimCard({ card, hole, holes, used, mine, busy, onClaim, onUndo, picked, onPick }) {
   const c = colorOf(card.color);
   const left = Math.max(0, (card.uses_per_team || 1) - used);
   const elig = eligibility(card, hole, holes);
+  const opts = card.options || [];
   const spent = left === 0;
   const blocked = !elig.ok;
+  const needsChoice = opts.length > 0 && !picked;
   const disabled = spent || blocked || busy === card.id;
 
   return (
     <div className={`rounded-2xl border ${blocked || spent ? "border-lime-200/10" : c.ring} ${c.tint} overflow-hidden transition`}>
-      {/* whole card is the button */}
-      <button
-        onClick={() => !disabled && onClaim(card)}
-        disabled={disabled}
-        className={`w-full text-left p-4 flex items-start gap-3 transition ${disabled ? "opacity-60" : "active:scale-[0.99]"}`}
-      >
+      <div className={`w-full text-left p-4 flex items-start gap-3 transition ${disabled ? "opacity-60" : ""}`}>
         <div className={`w-12 h-12 rounded-xl bg-emerald-950/60 border ${c.ring} flex items-center justify-center shrink-0 text-2xl`}>
           {card.icon || (card.kind === "hazard" ? "⚠️" : "⚡")}
         </div>
@@ -167,17 +176,51 @@ function ClaimCard({ card, hole, holes, used, mine, busy, onClaim, onUndo }) {
             )}
           </div>
 
-          {/* Action line */}
-          <div className={`mt-3 rounded-xl py-2.5 text-center text-sm font-bold transition ${
-            disabled ? "bg-emerald-950/60 text-amber-50/40" : c.btn
-          }`}>
+          {/* Player choices */}
+          {opts.length > 0 && !spent && !blocked && (
+            <div className="mt-3">
+              <p className="text-amber-50/60 text-[11px] uppercase tracking-wide mb-1.5">Choose one</p>
+              <div className="grid gap-1.5">
+                {opts.map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => onPick(picked === opt ? "" : opt)}
+                    className={`text-left text-xs px-3 py-2 rounded-lg border transition ${
+                      picked === opt
+                        ? `${c.tint} ${c.ring} text-white font-semibold`
+                        : "bg-emerald-950/50 border-lime-200/10 text-amber-50/75 hover:border-lime-200/25"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className={`w-3.5 h-3.5 rounded-full border shrink-0 flex items-center justify-center ${
+                        picked === opt ? `${c.dot} border-transparent` : "border-lime-200/30"
+                      }`}>
+                        {picked === opt && <Check className="w-2.5 h-2.5 text-emerald-950" />}
+                      </span>
+                      {opt}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Action */}
+          <button
+            onClick={() => !disabled && !needsChoice && onClaim(card)}
+            disabled={disabled || needsChoice}
+            className={`w-full mt-3 rounded-xl py-2.5 text-center text-sm font-bold transition ${
+              disabled || needsChoice ? "bg-emerald-950/60 text-amber-50/40" : `${c.btn} active:scale-[0.99]`
+            }`}
+          >
             {busy === card.id ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
               : spent ? <span className="flex items-center justify-center gap-1.5"><Check className="w-4 h-4" /> All used</span>
               : blocked ? elig.reason
+              : needsChoice ? "Pick an option above"
               : `Use on hole ${hole}`}
-          </div>
+          </button>
         </div>
-      </button>
+      </div>
 
       {/* Undo chips for this team's uses */}
       {mine.length > 0 && (
@@ -190,7 +233,7 @@ function ClaimCard({ card, hole, holes, used, mine, busy, onClaim, onUndo }) {
               className="text-[11px] bg-emerald-950/70 border border-lime-200/15 text-amber-50/80 px-2 py-1 rounded-full flex items-center gap-1 hover:border-rose-300/40 transition"
             >
               {busy === u.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Undo2 className="w-3 h-3" />}
-              Undo hole {u.hole_number || "?"}
+              Hole {u.hole_number || "?"}{u.option_label ? ` · ${u.option_label}` : ""}
             </button>
           ))}
         </div>
@@ -222,7 +265,7 @@ function AroundTheCourse({ teams, myTeamId, cards }) {
                     const cc = colorOf(card?.color);
                     return (
                       <span key={u.id} className={`text-[10px] ${cc.chip} px-1.5 py-0.5 rounded-full`}>
-                        {card?.icon || "⚡"} {card?.name}{u.hole_number ? ` #${u.hole_number}` : ""}
+                        {card?.icon || "⚡"} {card?.name}{u.option_label ? ` (${u.option_label})` : ""}{u.hole_number ? ` #${u.hole_number}` : ""}
                       </span>
                     );
                   })}
