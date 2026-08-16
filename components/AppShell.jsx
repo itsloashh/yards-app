@@ -16,19 +16,16 @@ export default function AppShell({ children }) {
   const isSeo = pathname?.startsWith("/yard-sales");
   const isGolf = pathname?.startsWith("/golf");
 
-  // Brand chooser: shown once after splash on first entry to the home route,
-  // unless the user has already picked a section this session/before.
+  // Brand chooser: shown after the splash on every visit to the home route.
+  // Deliberately NOT remembered — we want every visitor choosing a side each
+  // time, so the golf section is always surfaced.
   const [showChooser, setShowChooser] = useState(false);
   useEffect(() => {
     // Only consider showing the chooser on the main app home, not deep links
     if (pathname === "/") {
-      let chosen = null;
-      try { chosen = localStorage.getItem("yards_section"); } catch {}
-      if (!chosen) {
-        // Wait for the splash to finish before showing the chooser
-        const t = setTimeout(() => setShowChooser(true), 2000);
-        return () => clearTimeout(t);
-      }
+      // Wait for the splash to finish before showing the chooser
+      const t = setTimeout(() => setShowChooser(true), 2000);
+      return () => clearTimeout(t);
     }
   }, [pathname]);
 

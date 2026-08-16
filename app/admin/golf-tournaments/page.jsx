@@ -298,28 +298,105 @@ function HolesTab({ id, holes, reload }) {
     reload();
   };
 
+  const challengeCount = holes.filter((h) => (h.challenge || "").trim()).length;
+
+  if (holes.length === 0) {
+    return (
+      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4 text-center py-8">
+        <p className="text-stone-400 text-sm mb-3">No holes set up.</p>
+        <button onClick={seed} className="px-4 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-bold">Create 18 holes</button>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4">
-      {holes.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-stone-400 text-sm mb-3">No holes set up.</p>
-          <button onClick={seed} className="px-4 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-bold">Create 18 holes</button>
+    <div className="space-y-3">
+      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4">
+        <p className="text-stone-300 text-sm font-medium">Course setup</p>
+        <p className="text-stone-500 text-xs mt-0.5">
+          Set par for each hole, then add a challenge to any hole you want to feature.
+          {challengeCount > 0 && <> Currently <strong className="text-emerald-400">{challengeCount}</strong> challenge hole{challengeCount === 1 ? "" : "s"}.</>}
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        {holes.map((h) => (
+          <HoleRow key={h.id} hole={h} onUpdate={update} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HoleRow({ hole, onUpdate }) {
+  const hasChallenge = (hole.challenge || "").trim().length > 0;
+  const [open, setOpen] = useState(hasChallenge);
+
+  return (
+    <div className={`rounded-xl border bg-stone-900 ${hasChallenge ? "border-emerald-500/40" : "border-stone-800"}`}>
+      <div className="flex items-center gap-2 p-3">
+        <span className="w-9 h-9 rounded-lg bg-stone-800 text-stone-200 text-sm font-bold flex items-center justify-center shrink-0">
+          {hole.hole_number}
+        </span>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="text-stone-500 text-xs">Par</span>
+          <input
+            defaultValue={hole.par}
+            inputMode="numeric"
+            style={{ width: "3.5rem" }}
+            className="admin-input text-center"
+            onBlur={(e) => onUpdate(hole.id, { par: parseInt(e.target.value) || 4 })}
+          />
         </div>
-      ) : (
-        <>
-          <p className="text-stone-500 text-xs mb-3">Set par and mark any challenge holes — these show on the player's round info and scorecard.</p>
-          <div className="space-y-1.5">
-            {holes.map((h) => (
-              <div key={h.id} className="flex items-center gap-2">
-                <span className="w-8 h-8 rounded-lg bg-stone-800 text-stone-300 text-sm font-bold flex items-center justify-center shrink-0">{h.hole_number}</span>
-                <input defaultValue={h.par} inputMode="numeric" className="admin-input w-16 shrink-0 text-center"
-                  onBlur={(e) => update(h.id, { par: parseInt(e.target.value) || 4 })} />
-                <input defaultValue={h.challenge || ""} placeholder="Challenge (optional)" className="admin-input flex-1"
-                  onBlur={(e) => update(h.id, { challenge: e.target.value })} />
-              </div>
-            ))}
+
+        <div className="flex-1 min-w-0 text-right">
+          {hasChallenge ? (
+            <span className="text-emerald-400 text-xs truncate inline-block max-w-full">{hole.challenge}</span>
+          ) : (
+            <span className="text-stone-600 text-xs">No challenge</span>
+          )}
+        </div>
+
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className={`shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium transition ${
+            hasChallenge ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" : "bg-stone-800 text-stone-400 hover:text-white"
+          }`}
+        >
+          {open ? "Close" : hasChallenge ? "Edit" : "+ Challenge"}
+        </button>
+      </div>
+
+      {open && (
+        <div className="px-3 pb-3 space-y-2.5 border-t border-stone-800 pt-3">
+          <div>
+            <label className="block text-stone-400 text-xs mb-1.5">Challenge name</label>
+            <input
+              defaultValue={hole.challenge || ""}
+              placeholder="e.g. Long Drive, Closest to the Pin"
+              className="admin-input"
+              onBlur={(e) => onUpdate(hole.id, { challenge: e.target.value })}
+            />
           </div>
-        </>
+          <div>
+            <label className="block text-stone-400 text-xs mb-1.5">Reward <span className="text-stone-600">(what the winner gets)</span></label>
+            <input
+              defaultValue={hole.challenge_reward || ""}
+              placeholder="e.g. Free Hot Streak token"
+              className="admin-input"
+              onBlur={(e) => onUpdate(hole.id, { challenge_reward: e.target.value })}
+            />
+          </div>
+          {hasChallenge && (
+            <button
+              onClick={() => { onUpdate(hole.id, { challenge: "", challenge_reward: "" }); setOpen(false); }}
+              className="text-rose-400 hover:text-rose-300 text-xs flex items-center gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Remove challenge from this hole
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

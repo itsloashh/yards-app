@@ -34,6 +34,16 @@ export default function Scorecard({ round, liveTeam, onSaved }) {
   const par = parFor(holes, active);
   const holeInfo = holes.find((h) => h.hole_number === active);
 
+  // Where "Save" sends them next: the following hole in play order, skipping
+  // any already filled in, so a group can't land back on the same hole twice.
+  const nextHole = useMemo(() => {
+    for (let step = 1; step <= holeCount; step++) {
+      const h = ((active - 1 + step) % holeCount) + 1;
+      if (!(scoreMap[h]?.strokes > 0)) return h;
+    }
+    return (active % holeCount) + 1;
+  }, [active, holeCount, scoreMap]);
+
   const commit = async () => {
     if (strokes <= 0) { setStatus("error"); setMessage("Enter at least 1 stroke"); return; }
     setStatus("saving");
@@ -42,7 +52,8 @@ export default function Scorecard({ round, liveTeam, onSaved }) {
       setStatus("saved");
       setMessage("");
       onSaved?.();
-      setTimeout(() => setActive((h) => (h % holeCount) + 1), 500);
+      // Auto-advance so nobody double-enters the hole they just finished
+      setTimeout(() => setActive(nextHole), 650);
     } else if (res.queued) {
       setStatus("queued");
       setMessage(res.error);
@@ -54,6 +65,7 @@ export default function Scorecard({ round, liveTeam, onSaved }) {
 
   const holeTotal = strokes + penalties;
   const diff = holeTotal - par;
+  const alreadyRecorded = (scoreMap[active]?.strokes ?? 0) > 0;
 
   return (
     <div className="px-4 py-4">
@@ -90,6 +102,11 @@ export default function Scorecard({ round, liveTeam, onSaved }) {
             <p className="text-amber-50/60 text-xs uppercase tracking-wider">Hole</p>
             <p className="text-white font-display font-bold text-4xl leading-none">{active}</p>
             <p className="text-lime-300 text-sm mt-1">Par {par}</p>
+            {alreadyRecorded && (
+              <span className="inline-block mt-1.5 text-[10px] bg-lime-300/20 text-lime-200 px-2 py-0.5 rounded-full">
+                Already recorded
+              </span>
+            )}
           </div>
           <button onClick={() => setActive((h) => (h % holeCount) + 1)} className="w-9 h-9 rounded-full bg-emerald-950/60 border border-lime-200/15 flex items-center justify-center">
             <ChevronRight className="w-5 h-5 text-amber-50/80" />
@@ -100,6 +117,9 @@ export default function Scorecard({ round, liveTeam, onSaved }) {
           <div className="mt-3 bg-lime-300/12 border border-lime-300/30 rounded-xl px-3 py-2 text-center">
             <p className="text-lime-200 text-xs font-semibold uppercase tracking-wide">Challenge hole</p>
             <p className="text-white text-sm mt-0.5">{holeInfo.challenge}</p>
+            {holeInfo.challenge_reward && (
+              <p className="text-lime-300/90 text-[11px] mt-1">🎁 {holeInfo.challenge_reward}</p>
+            )}
           </div>
         )}
 

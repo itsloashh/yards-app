@@ -1,5 +1,5 @@
 "use client";
-import { Clock, Flag, Users, Swords, Target, MapPin, Zap, AlertTriangle } from "lucide-react";
+import { Clock, Flag, Users, Swords, Target, MapPin, Zap, AlertTriangle, Gift } from "lucide-react";
 import { colorOf, ruleLabel } from "@/lib/powerUpStyles";
 
 export default function RoundInfo({ round, state, myTeamId }) {
@@ -80,8 +80,13 @@ export default function RoundInfo({ round, state, myTeamId }) {
                   {h.hole_number}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-white text-sm font-medium truncate">{h.challenge}</p>
+                  <p className="text-white text-sm font-medium">{h.challenge}</p>
                   <p className="text-amber-50/55 text-[11px]">Par {h.par}</p>
+                  {h.challenge_reward && (
+                    <p className="text-lime-300/90 text-[11px] mt-1 flex items-start gap-1">
+                      <Gift className="w-3 h-3 mt-0.5 shrink-0" /> <span>{h.challenge_reward}</span>
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
@@ -124,7 +129,9 @@ function Inventory({ round, state, myTeamId }) {
           const hazard = card.kind === "hazard";
 
           return (
-            <div key={card.id} className={`rounded-xl border ${left > 0 ? c.ring : "border-lime-200/10"} ${left > 0 ? c.tint : "bg-emerald-950/40"} px-3 py-2.5`}>
+            <div key={card.id} className={`rounded-xl border px-3 py-2.5 transition ${
+              left > 0 ? `${c.ring} ${c.tint} ${c.glow}` : "border-lime-200/10 bg-emerald-950/40"
+            }`}>
               <div className="flex items-center gap-2.5">
                 <span className="w-8 h-8 rounded-lg bg-emerald-950/60 flex items-center justify-center shrink-0 overflow-hidden">
                   <span className="text-base leading-none truncate px-0.5">

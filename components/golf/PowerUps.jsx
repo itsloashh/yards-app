@@ -147,7 +147,9 @@ function ClaimCard({ card, hole, holes, used, mine, busy, onClaim, onUndo, picke
   const disabled = spent || blocked || busy === card.id;
 
   return (
-    <div className={`rounded-2xl border ${blocked || spent ? "border-lime-200/10" : c.ring} ${c.tint} overflow-hidden transition`}>
+    <div className={`rounded-2xl border overflow-hidden transition ${
+      blocked || spent ? "border-lime-200/10 bg-emerald-950/40" : `${c.ring} ${c.tint} ${c.glow}`
+    }`}>
       <div className={`w-full text-left p-4 flex items-start gap-3 transition ${disabled ? "opacity-60" : ""}`}>
         <div className={`w-12 h-12 rounded-xl bg-emerald-950/60 border ${c.ring} flex items-center justify-center shrink-0 text-2xl`}>
           {card.icon || (card.kind === "hazard" ? "⚠️" : "⚡")}
