@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Trash2, ChevronDown, Zap, AlertTriangle, Check } from "lucide-react";
+import { Trash2, ChevronDown, Zap, AlertTriangle, Check, X } from "lucide-react";
 import { CARD_COLORS, COLOR_KEYS, colorOf, ruleLabel } from "@/lib/powerUpStyles";
 
 const PAR_OPTIONS = [3, 4, 5];
