@@ -1,6 +1,6 @@
 "use client";
 import { Clock, Flag, Users, Swords, Target, MapPin, Zap, AlertTriangle, Gift } from "lucide-react";
-import { colorOf, ruleLabel } from "@/lib/powerUpStyles";
+import { colorOf, ruleLabel, remainingFor, grantsFor, spendsFor, isAutoAwarded, awardRuleLabel } from "@/lib/powerUpStyles";
 
 export default function RoundInfo({ round, state, myTeamId }) {
   const { tournament, team, player, partners = [], competitors = [], holes = [] } = round;
@@ -123,10 +123,12 @@ function Inventory({ round, state, myTeamId }) {
       <div className="space-y-2">
         {cards.map((card) => {
           const c = colorOf(card.color);
-          const spentUses = usedFor(card.id);
-          const total = card.uses_per_team || 1;
-          const left = Math.max(0, total - spentUses.length);
+          const left = Math.max(0, remainingFor(card, uses));
+          const grants = grantsFor(card.id, uses);
+          const spends = spendsFor(card.id, uses);
+          const earned = grants.reduce((a, g) => a + (g.delta ?? 1), 0);
           const hazard = card.kind === "hazard";
+          const total = (card.uses_per_team ?? 0) + earned;
 
           return (
             <div key={card.id} className={`rounded-xl border px-3 py-2.5 transition ${
@@ -144,28 +146,32 @@ function Inventory({ round, state, myTeamId }) {
                     {hazard && <AlertTriangle className="w-3 h-3 text-rose-300 shrink-0" />}
                     {card.name}
                   </p>
-                  <p className="text-amber-50/45 text-[11px]">{ruleLabel(card)}</p>
+                  <p className="text-amber-50/45 text-[11px]">
+                    {ruleLabel(card)}
+                    {isAutoAwarded(card) && <span className="text-lime-300/70"> · auto</span>}
+                  </p>
                 </div>
 
-                {/* token pips */}
                 <div className="flex items-center gap-1 shrink-0">
-                  {Array.from({ length: Math.min(total, 5) }, (_, i) => (
-                    <span
-                      key={i}
-                      className={`w-2 h-2 rounded-full ${i < left ? c.dot : "bg-amber-50/15"}`}
-                    />
+                  {Array.from({ length: Math.min(Math.max(total, 1), 5) }, (_, i) => (
+                    <span key={i} className={`w-2 h-2 rounded-full ${i < left ? c.dot : "bg-amber-50/15"}`} />
                   ))}
                   <span className={`ml-1 text-xs font-bold ${left > 0 ? c.text : "text-amber-50/35"}`}>
-                    {left}/{total}
+                    {left}
                   </span>
                 </div>
               </div>
 
-              {spentUses.length > 0 && (
+              {(earned > 0 || spends.length > 0) && (
                 <div className="flex flex-wrap gap-1 mt-2 pl-10">
-                  {spentUses.map((u) => (
+                  {grants.map((g) => (
+                    <span key={g.id} className={`text-[10px] ${c.chip} px-1.5 py-0.5 rounded-full`}>
+                      +{g.delta ?? 1} earned{g.hole_number ? ` · hole ${g.hole_number}` : ""}
+                    </span>
+                  ))}
+                  {spends.map((u) => (
                     <span key={u.id} className="text-[10px] bg-emerald-950/70 border border-lime-200/12 text-amber-50/60 px-1.5 py-0.5 rounded-full">
-                      Hole {u.hole_number || "?"}{u.option_label ? ` · ${u.option_label}` : ""}
+                      used hole {u.hole_number || "?"}{u.option_label ? ` · ${u.option_label}` : ""}
                     </span>
                   ))}
                 </div>

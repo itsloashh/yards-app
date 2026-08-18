@@ -124,17 +124,18 @@ export default function Leaderboard({ state, myTeamId, lastUpdate }) {
                     </div>
 
                     {/* power-ups this team has spent */}
-                    {(t.power_up_uses || []).length > 0 && (
+                    {(t.power_up_uses || []).filter((u) => u.entry_type !== "grant").length > 0 && (
                       <div className="mt-3">
                         <p className="text-amber-50/55 text-[11px] uppercase tracking-wide mb-1.5 flex items-center gap-1">
                           <Zap className="w-3 h-3" /> Power-ups used
                         </p>
                         <div className="flex flex-wrap gap-1.5">
-                          {(t.power_up_uses || []).map((u) => {
+                          {(t.power_up_uses || []).filter((u) => u.entry_type !== "grant").map((u) => {
                             const pu = powerUps.find((p) => p.id === u.power_up_id);
                             return (
                               <span key={u.id} className="text-[11px] bg-emerald-950/70 border border-lime-200/15 text-amber-50/85 px-2 py-1 rounded-full">
                                 {pu?.icon ? `${pu.icon} ` : ""}{pu?.name || "Power-up"}
+                                {u.option_label ? ` (${u.option_label})` : ""}
                                 {u.hole_number ? ` · #${u.hole_number}` : ""}
                               </span>
                             );

@@ -2,7 +2,7 @@
 import { useState, useMemo } from "react";
 import { Zap, AlertTriangle, Check, Loader2, Undo2, Users, Lock } from "lucide-react";
 import { usePowerUp, undoPowerUp } from "@/lib/tournament";
-import { colorOf, eligibility, ruleLabel } from "@/lib/powerUpStyles";
+import { colorOf, eligibility, ruleLabel, remainingFor, grantsFor, spendsFor, isAutoAwarded } from "@/lib/powerUpStyles";
 
 export default function PowerUps({ round, state, myTeamId, onChanged }) {
   const tag = round?.player?.bag_tag;
@@ -23,11 +23,13 @@ export default function PowerUps({ round, state, myTeamId, onChanged }) {
   const boosts = cards.filter((c) => c.kind !== "hazard");
   const cautions = cards.filter((c) => c.kind === "hazard");
 
-  const usedCount = useMemo(() => {
+  // Remaining comes from the ledger so earned tokens and starting allowance
+  // are counted the same way the database counts them.
+  const remaining = useMemo(() => {
     const m = {};
-    for (const u of myUses) m[u.power_up_id] = (m[u.power_up_id] || 0) + 1;
+    for (const c of allCards) m[c.id] = remainingFor(c, myUses);
     return m;
-  }, [myUses]);
+  }, [allCards, myUses]);
 
   const [picked, setPicked] = useState({});   // cardId -> chosen option
 
@@ -93,8 +95,9 @@ export default function PowerUps({ round, state, myTeamId, onChanged }) {
               {boosts.map((card) => (
                 <ClaimCard
                   key={card.id} card={card} hole={hole} holes={holes}
-                  used={usedCount[card.id] || 0}
-                  mine={myUses.filter((u) => u.power_up_id === card.id)}
+                  left={Math.max(0, remaining[card.id] ?? 0)}
+                  mine={spendsFor(card.id, myUses)}
+                  grants={grantsFor(card.id, myUses)}
                   busy={busy} onClaim={claim} onUndo={undo}
                   picked={picked[card.id] || ""}
                   onPick={(v) => setPicked((p) => ({ ...p, [card.id]: v }))}
@@ -108,8 +111,9 @@ export default function PowerUps({ round, state, myTeamId, onChanged }) {
               {cautions.map((card) => (
                 <ClaimCard
                   key={card.id} card={card} hole={hole} holes={holes}
-                  used={usedCount[card.id] || 0}
-                  mine={myUses.filter((u) => u.power_up_id === card.id)}
+                  left={Math.max(0, remaining[card.id] ?? 0)}
+                  mine={spendsFor(card.id, myUses)}
+                  grants={grantsFor(card.id, myUses)}
                   busy={busy} onClaim={claim} onUndo={undo}
                   picked={picked[card.id] || ""}
                   onPick={(v) => setPicked((p) => ({ ...p, [card.id]: v }))}
@@ -136,9 +140,8 @@ function CardGroup({ icon: Icon, title, children }) {
   );
 }
 
-function ClaimCard({ card, hole, holes, used, mine, busy, onClaim, onUndo, picked, onPick }) {
+function ClaimCard({ card, hole, holes, left, mine, grants = [], busy, onClaim, onUndo, picked, onPick }) {
   const c = colorOf(card.color);
-  const left = Math.max(0, (card.uses_per_team || 1) - used);
   const elig = eligibility(card, hole, holes);
   const opts = card.options || [];
   const spent = left === 0;
@@ -159,7 +162,7 @@ function ClaimCard({ card, hole, holes, used, mine, busy, onClaim, onUndo, picke
           <div className="flex items-start justify-between gap-2">
             <p className="text-white font-bold leading-tight">{card.name}</p>
             <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${spent ? "bg-stone-700/70 text-amber-50/50" : c.chip}`}>
-              {spent ? "Used" : `${left} left`}
+              {spent ? "None left" : `${left} left`}
             </span>
           </div>
 
@@ -171,6 +174,16 @@ function ClaimCard({ card, hole, holes, used, mine, busy, onClaim, onUndo, picke
             <span className="text-[10px] text-amber-50/45 bg-emerald-950/50 px-2 py-0.5 rounded-full">
               {ruleLabel(card)}
             </span>
+            {isAutoAwarded(card) && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${c.chip}`}>
+                earned from scores
+              </span>
+            )}
+            {grants.length > 0 && (
+              <span className="text-[10px] text-lime-300/80 bg-emerald-950/50 px-2 py-0.5 rounded-full">
+                +{grants.reduce((a, g) => a + (g.delta ?? 1), 0)} earned
+              </span>
+            )}
             {blocked && !spent && (
               <span className="text-[10px] text-amber-200 bg-amber-400/10 border border-amber-300/25 px-2 py-0.5 rounded-full flex items-center gap-1">
                 <Lock className="w-2.5 h-2.5" /> {elig.reason}
@@ -216,7 +229,7 @@ function ClaimCard({ card, hole, holes, used, mine, busy, onClaim, onUndo, picke
             }`}
           >
             {busy === card.id ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-              : spent ? <span className="flex items-center justify-center gap-1.5"><Check className="w-4 h-4" /> All used</span>
+              : spent ? <span className="flex items-center justify-center gap-1.5"><Check className="w-4 h-4" /> None left</span>
               : blocked ? elig.reason
               : needsChoice ? "Pick an option above"
               : `Use on hole ${hole}`}
@@ -254,7 +267,7 @@ function AroundTheCourse({ teams, myTeamId, cards }) {
       <div className="space-y-2.5">
         {others.length === 0 && <p className="text-amber-50/40 text-xs">No other teams yet.</p>}
         {others.map((t) => {
-          const uses = t.power_up_uses || [];
+          const uses = (t.power_up_uses || []).filter((u) => u.entry_type !== "grant");
           return (
             <div key={t.id} className="flex items-start justify-between gap-3">
               <p className="text-amber-50/85 text-sm min-w-0 truncate">{t.name}</p>

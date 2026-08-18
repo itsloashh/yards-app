@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Trash2, ChevronDown, Zap, AlertTriangle, Check, X } from "lucide-react";
-import { CARD_COLORS, COLOR_KEYS, colorOf, ruleLabel } from "@/lib/powerUpStyles";
+import { CARD_COLORS, COLOR_KEYS, colorOf, ruleLabel, AWARD_METRICS, AWARD_COMPARATORS, awardRuleLabel, isAutoAwarded } from "@/lib/powerUpStyles";
 
 const PAR_OPTIONS = [3, 4, 5];
 
@@ -45,8 +45,13 @@ export default function AdminPowerUpCard({ card, holeCount = 18, onChange, onDel
               {hazard ? "Caution" : "Power-Up"}
             </span>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-800 text-stone-400">
-              {card.uses_per_team ?? 1}× per team
+              starts with {card.uses_per_team ?? 0}
             </span>
+            {isAutoAwarded(card) && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300">
+                auto-awarded
+              </span>
+            )}
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-800 text-stone-400">
               {ruleLabel(card)}
             </span>
@@ -109,14 +114,15 @@ export default function AdminPowerUpCard({ card, holeCount = 18, onChange, onDel
             </div>
 
             <div>
-              <L>Uses per team</L>
+              <L>Starting allowance</L>
               <input
                 value={card.uses_per_team ?? 1}
-                onChange={(e) => patch({ uses_per_team: parseInt(e.target.value) || 1 })}
+                onChange={(e) => patch({ uses_per_team: Math.max(0, parseInt(e.target.value) || 0) })}
                 inputMode="numeric"
                 style={{ width: "6rem" }}
                 className="admin-input"
               />
+              <p className="text-stone-600 text-[10px] mt-1">Set 0 if it must be earned.</p>
             </div>
           </div>
 
@@ -148,6 +154,9 @@ export default function AdminPowerUpCard({ card, holeCount = 18, onChange, onDel
               className="admin-input resize-none"
             />
           </div>
+
+          {/* ── Automatic award rule ── */}
+          <AwardRuleEditor card={card} patch={patch} />
 
           {/* ── Player-choice options ── */}
           <OptionsEditor
@@ -214,6 +223,86 @@ export default function AdminPowerUpCard({ card, holeCount = 18, onChange, onDel
             <Trash2 className="w-3.5 h-3.5" /> Delete this card
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+function AwardRuleEditor({ card, patch }) {
+  const metric = card.award_metric || "none";
+  const auto = metric !== "none";
+
+  return (
+    <div className={`rounded-xl p-3 border ${auto ? "border-sky-500/30 bg-sky-500/5" : "border-stone-800 bg-stone-950/60"}`}>
+      <L>Award automatically from the score</L>
+      <p className="text-stone-500 text-[11px] mb-2.5">
+        When a team saves a hole, this rule is checked and the card drops into their
+        inventory with a popup. Re-saving a corrected score re-checks it, so nothing double-counts.
+      </p>
+
+      <div className="flex flex-wrap gap-2">
+        <select
+          value={metric}
+          onChange={(e) => patch({ award_metric: e.target.value })}
+          className="admin-input"
+          style={{ width: "auto", minWidth: "10rem" }}
+        >
+          {AWARD_METRICS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+        </select>
+
+        {auto && (
+          <>
+            <select
+              value={card.award_comparator || "lte"}
+              onChange={(e) => patch({ award_comparator: e.target.value })}
+              className="admin-input"
+              style={{ width: "auto", minWidth: "8rem" }}
+            >
+              {AWARD_COMPARATORS.map((cp) => <option key={cp.id} value={cp.id}>{cp.label}</option>)}
+            </select>
+
+            <input
+              value={card.award_value ?? 0}
+              onChange={(e) => patch({ award_value: parseInt(e.target.value) || 0 })}
+              inputMode="numeric"
+              style={{ width: "5rem" }}
+              className="admin-input text-center"
+            />
+          </>
+        )}
+      </div>
+
+      {auto && (
+        <>
+          <div className="flex flex-wrap gap-3 mt-3">
+            <div>
+              <L>Tokens awarded</L>
+              <input
+                value={card.award_amount ?? 1}
+                onChange={(e) => patch({ award_amount: Math.max(1, parseInt(e.target.value) || 1) })}
+                inputMode="numeric"
+                style={{ width: "5rem" }}
+                className="admin-input text-center"
+              />
+            </div>
+            <div className="flex-1 min-w-[12rem]">
+              <L>Popup message</L>
+              <input
+                value={card.award_message || ""}
+                onChange={(e) => patch({ award_message: e.target.value })}
+                placeholder="Nice birdie — take a Hot Streak token!"
+                className="admin-input"
+              />
+            </div>
+          </div>
+
+          <p className="text-sky-300 text-xs mt-3 bg-sky-500/10 border border-sky-500/25 rounded-lg px-3 py-2">
+            {awardRuleLabel(card)}
+          </p>
+          <p className="text-stone-500 text-[11px] mt-1.5">
+            Score vs par counts strokes + penalties, so a birdie with a penalty won't award.
+          </p>
+        </>
       )}
     </div>
   );

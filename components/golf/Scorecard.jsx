@@ -2,8 +2,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { Minus, Plus, Check, Loader2, CloudOff, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 import { saveScore, parFor, formatToPar } from "@/lib/tournament";
+import HoleReviewModal from "@/components/golf/HoleReviewModal";
 
-export default function Scorecard({ round, liveTeam, onSaved }) {
+export default function Scorecard({ round, liveTeam, cards = [], onSaved }) {
   const { team, holes = [], player } = round;
   const tag = player?.bag_tag;
   const holeCount = holes.length || round.tournament?.holes_count || 18;
@@ -14,6 +15,7 @@ export default function Scorecard({ round, liveTeam, onSaved }) {
   const [penalties, setPenalties] = useState(0);
   const [status, setStatus] = useState("");   // "", saving, saved, queued, error
   const [message, setMessage] = useState("");
+  const [review, setReview] = useState(null); // { hole, granted }
 
   // Scores already recorded for this team (from the live feed)
   const scoreMap = useMemo(() => {
@@ -52,8 +54,10 @@ export default function Scorecard({ round, liveTeam, onSaved }) {
       setStatus("saved");
       setMessage("");
       onSaved?.();
-      // Auto-advance so nobody double-enters the hole they just finished
-      setTimeout(() => setActive(nextHole), 650);
+      // Review step: shows anything the score earned and lets the group log
+      // what they used here. Advancing waits until it's closed so the hole
+      // in the modal always matches the hole they just played.
+      setReview({ hole: active, granted: res.granted || [] });
     } else if (res.queued) {
       setStatus("queued");
       setMessage(res.error);
@@ -61,6 +65,13 @@ export default function Scorecard({ round, liveTeam, onSaved }) {
       setStatus("error");
       setMessage(res.error || "Could not save");
     }
+  };
+
+  const closeReview = () => {
+    const done = review?.hole;
+    setReview(null);
+    onSaved?.();
+    if (done === active) setActive(nextHole);
   };
 
   const holeTotal = strokes + penalties;
@@ -166,6 +177,19 @@ export default function Scorecard({ round, liveTeam, onSaved }) {
 
       {/* Running card */}
       <RunningCard scoreMap={scoreMap} holes={holes} holeCount={holeCount} onPick={setActive} active={active} />
+
+      {review && (
+        <HoleReviewModal
+          hole={review.hole}
+          granted={review.granted}
+          tag={tag}
+          cards={cards}
+          ledger={liveTeam?.power_up_uses || []}
+          holes={holes}
+          onDone={closeReview}
+          onSkip={closeReview}
+        />
+      )}
     </div>
   );
 }
