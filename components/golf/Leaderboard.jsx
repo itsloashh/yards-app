@@ -112,16 +112,29 @@ export default function Leaderboard({ state, myTeamId, lastUpdate }) {
                         const s = (t.scores || []).find((x) => x.hole_number === h);
                         const val = s?.strokes > 0 ? s.strokes + (s.penalties || 0) + holeAdjustment(t, h, powerUps, holes) : null;
                         const d = val != null ? val - parFor(holes, h) : null;
+                        const usedHere = (t.power_up_uses || []).filter((u) => u.hole_number === h && (u.source || "manual") === "manual");
+                        const wonHere = (t.challenge_wins || []).some((w) => w.hole_number === h);
                         return (
-                          <div key={h} className="rounded-md py-1 text-center bg-emerald-950/50 border border-lime-200/10">
+                          <div key={h} className="relative rounded-md py-1 text-center bg-emerald-950/50 border border-lime-200/10">
                             <span className="block text-[9px] text-amber-50/40">{h}</span>
                             <span className={`block text-xs font-bold ${
                               d == null ? "text-amber-50/25" : d > 0 ? "text-rose-300" : d < 0 ? "text-lime-300" : "text-white"
                             }`}>{val ?? "·"}</span>
+                            {(usedHere.length > 0 || wonHere) && (
+                              <span className="absolute -top-0.5 -right-0.5 flex gap-0.5">
+                                {usedHere.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-lime-300" />}
+                                {wonHere && <span className="w-1.5 h-1.5 rounded-full bg-amber-300" />}
+                              </span>
+                            )}
                           </div>
                         );
                       })}
                     </div>
+
+                    <p className="text-amber-50/40 text-[10px] mt-1.5 flex items-center gap-2.5">
+                      <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-lime-300" /> card used</span>
+                      <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-300" /> challenge won</span>
+                    </p>
 
                     {/* power-ups this team has spent */}
                     {(t.power_up_uses || []).filter((u) => u.entry_type !== "grant").length > 0 && (

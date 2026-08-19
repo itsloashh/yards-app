@@ -1,25 +1,28 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, Info, ClipboardList, Trophy, Zap, LogOut, CloudOff } from "lucide-react";
 import { useRound, useLiveTournament, useQueueSync } from "@/lib/tournament";
 import TagSignIn from "@/components/golf/TagSignIn";
 import RoundInfo from "@/components/golf/RoundInfo";
 import Scorecard from "@/components/golf/Scorecard";
 import Leaderboard from "@/components/golf/Leaderboard";
-import PowerUps from "@/components/golf/PowerUps";
+import Inventory from "@/components/golf/Inventory";
 import HowToPlay from "@/components/golf/HowToPlay";
+import RoundSummary from "@/components/golf/RoundSummary";
 
 const TABS = [
   { id: "info", label: "Round", icon: Info },
   { id: "card", label: "Scorecard", icon: ClipboardList },
   { id: "board", label: "Live", icon: Trophy },
-  { id: "power", label: "Power-Ups", icon: Zap },
+  { id: "power", label: "Inventory", icon: Zap },
 ];
 
 export default function TournamentPage() {
   const { round, loading, error, load, signOut } = useRound();
   const [tab, setTab] = useState("info");
   const [showRules, setShowRules] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [summarySeen, setSummarySeen] = useState(false);
   const pending = useQueueSync();
 
   const tournamentId = round?.tournament?.id;
@@ -27,6 +30,19 @@ export default function TournamentPage() {
 
   const myTeamId = round?.team?.id;
   const liveTeam = state?.teams?.find((t) => t.id === myTeamId);
+
+  // Round is done once every hole has a score. Offer the wrap-up once, then
+  // leave it available from the button so it's never in the way.
+  const holesTotal = state?.holes?.length || 0;
+  const holesDone = (liveTeam?.scores || []).filter((s) => s.strokes > 0).length;
+  const roundComplete = holesTotal > 0 && holesDone >= holesTotal;
+
+  useEffect(() => {
+    if (roundComplete && !summarySeen) {
+      setShowSummary(true);
+      setSummarySeen(true);
+    }
+  }, [roundComplete, summarySeen]);
 
   if (loading) {
     return (
@@ -87,12 +103,26 @@ export default function TournamentPage() {
         </div>
       </div>
 
+      {roundComplete && (
+        <div className="px-4 mt-3">
+          <button
+            onClick={() => setShowSummary(true)}
+            className="w-full py-3 rounded-xl bg-lime-300 text-emerald-950 font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.99] transition"
+          >
+            <Trophy className="w-4 h-4" /> View round summary
+          </button>
+        </div>
+      )}
+
       {tab === "info" && <RoundInfo round={round} state={state} myTeamId={myTeamId} onShowRules={() => setShowRules(true)} />}
       {tab === "card" && <Scorecard round={round} liveTeam={liveTeam} cards={state?.power_ups || round?.power_ups || []} onSaved={refresh} />}
       {tab === "board" && <Leaderboard state={state} myTeamId={myTeamId} lastUpdate={lastUpdate} />}
 
       {showRules && <HowToPlay onClose={() => setShowRules(false)} />}
-      {tab === "power" && <PowerUps round={round} state={state} myTeamId={myTeamId} onChanged={refresh} />}
+      {showSummary && (
+        <RoundSummary state={state} myTeamId={myTeamId} onClose={() => setShowSummary(false)} />
+      )}
+      {tab === "power" && <Inventory round={round} state={state} myTeamId={myTeamId} />}
     </div>
   );
 }

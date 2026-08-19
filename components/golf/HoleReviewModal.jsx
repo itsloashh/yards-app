@@ -1,7 +1,8 @@
 "use client";
 import { useState, useMemo, useEffect } from "react";
 import { Check, Loader2, Sparkles, AlertTriangle, X, ArrowRight } from "lucide-react";
-import { setHolePowerUps } from "@/lib/tournament";
+import { setHolePowerUps, setChallengeWin } from "@/lib/tournament";
+import { challengeTypeById } from "@/lib/scrambleRules";
 import { colorOf, canSelect, remainingFor, receivedCount, isLogged } from "@/lib/powerUpStyles";
 
 /**
@@ -12,10 +13,11 @@ import { colorOf, canSelect, remainingFor, receivedCount, isLogged } from "@/lib
  */
 export default function HoleReviewModal({
   hole, tag, cards = [], ledger = [], holes = [], granted = [],
-  strokes = 0, penalties = 0, onDone, onSkip,
+  strokes = 0, penalties = 0, wonChallenge = false, onDone, onSkip,
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [wonChal, setWonChal] = useState(!!wonChallenge);
 
   // Everything the team manually recorded on this hole — spends AND logged
   // penalties. Auto awards (source 'auto') are excluded: they're not editable.
@@ -51,10 +53,13 @@ export default function HoleReviewModal({
   const par = holeInfo?.par ?? 4;
 
   // Live preview of what these ticks do to the hole score
-  const adjustment = Object.keys(picked).reduce((acc, id) => {
+  const cardAdj = Object.keys(picked).reduce((acc, id) => {
     const eff = cards.find((c) => c.id === id)?.score_effect || 0;
     return acc + (jackpot ? eff * 2 : eff);
   }, 0);
+  const chalEff = holeInfo?.challenge_effect || 0;
+  const chalAdj = wonChal ? (jackpot ? chalEff * 2 : chalEff) : 0;
+  const adjustment = cardAdj + chalAdj;
 
   const baseTotal = (Number(strokes) || 0) + (Number(penalties) || 0);
   const finalTotal = baseTotal + adjustment;
@@ -90,6 +95,9 @@ export default function HoleReviewModal({
 
     setBusy(true);
     const res = await setHolePowerUps(tag, hole, selections);
+    if (res.ok && holeInfo?.challenge) {
+      await setChallengeWin(tag, hole, wonChal);
+    }
     setBusy(false);
     if (!res.ok) { setError(res.error || "Could not save"); return; }
     onDone?.();
@@ -167,6 +175,33 @@ export default function HoleReviewModal({
               </div>
             </div>
           </div>
+
+          {/* Hole challenge */}
+          {holeInfo?.challenge && (
+            <div className={`rounded-2xl border p-4 transition ${wonChal ? "border-lime-300/50 bg-lime-300/12" : "border-lime-200/15 bg-emerald-950/50"}`}>
+              <p className="text-lime-300 text-[11px] font-bold uppercase tracking-wider">Challenge hole</p>
+              <p className="text-white font-bold mt-0.5">
+                {challengeTypeById(holeInfo.challenge_type)?.icon || "🎯"} {holeInfo.challenge}
+              </p>
+              {holeInfo.challenge_reward && (
+                <p className="text-amber-50/75 text-xs mt-1">{holeInfo.challenge_reward}</p>
+              )}
+              <button
+                onClick={() => setWonChal((v) => !v)}
+                className={`w-full mt-3 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 ${
+                  wonChal ? "bg-lime-300 text-emerald-950" : "bg-emerald-950/70 border border-lime-200/20 text-amber-50/80"
+                }`}
+              >
+                {wonChal && <Check className="w-4 h-4" />}
+                {wonChal ? "Your team won it" : "Did your team win it?"}
+              </button>
+              {!!chalEff && wonChal && (
+                <p className="text-lime-300 text-[11px] mt-1.5 text-center">
+                  {chalEff > 0 ? "+" : ""}{jackpot ? chalEff * 2 : chalEff} stroke{Math.abs(jackpot ? chalEff * 2 : chalEff) === 1 ? "" : "s"} applied
+                </p>
+              )}
+            </div>
+          )}
 
           {/* What the team spent */}
           {spendable.length > 0 && (

@@ -62,7 +62,12 @@ export default function Scorecard({ round, liveTeam, cards = [], onSaved }) {
       // Review step: shows anything the score earned and lets the group log
       // what they used here. Advancing waits until it's closed so the hole
       // in the modal always matches the hole they just played.
-      setReview({ hole: active, granted: res.granted || [], strokes, penalties });
+      setReview({
+        hole: active,
+        granted: res.granted || [],
+        strokes, penalties,
+        wonChallenge: (liveTeam?.challenge_wins || []).some((w) => w.hole_number === active),
+      });
     } else if (res.queued) {
       setStatus("queued");
       setMessage(res.error);
@@ -147,10 +152,23 @@ export default function Scorecard({ round, liveTeam, cards = [], onSaved }) {
         )}
 
         {/* Strokes */}
-        <Counter label="Strokes" value={strokes} onChange={setStrokes} min={0} max={20} big />
+        <Counter label="Strokes" value={strokes} onChange={setStrokes} min={0} max={30} big />
+
+        {/* Quick taps — faster than holding + on a big number */}
+        <div className="flex gap-1.5 justify-center mt-2.5 flex-wrap">
+          {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+            <button
+              key={n}
+              onClick={() => setStrokes(n)}
+              className={`w-9 h-9 rounded-lg text-sm font-bold border transition ${
+                strokes === n ? "bg-lime-300 text-emerald-950 border-lime-200" : "bg-emerald-950/60 text-amber-50/70 border-lime-200/12"
+              }`}
+            >{n}</button>
+          ))}
+        </div>
 
         {/* Penalties */}
-        <Counter label="Penalties" value={penalties} onChange={setPenalties} min={0} max={10} accent="rose" />
+        <Counter label="Penalties" value={penalties} onChange={setPenalties} min={0} max={15} accent="rose" />
 
         {/* Hole result */}
         <div className="mt-4 flex items-center justify-between bg-emerald-950/60 rounded-xl px-4 py-3 border border-lime-200/10">
@@ -196,6 +214,7 @@ export default function Scorecard({ round, liveTeam, cards = [], onSaved }) {
           granted={review.granted}
           strokes={review.strokes}
           penalties={review.penalties}
+          wonChallenge={review.wonChallenge}
           tag={tag}
           cards={cards}
           ledger={liveTeam?.power_up_uses || []}

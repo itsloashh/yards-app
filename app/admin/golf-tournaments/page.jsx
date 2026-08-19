@@ -4,7 +4,7 @@ import { Loader2, Plus, Trash2, X, Trophy, Check, Users, Zap, Flag, ChevronLeft,
 import { supabase } from "@/lib/supabase";
 import AdminPowerUpCard from "@/components/golf/AdminPowerUpCard";
 import { isAutoAwarded, CARD_TEMPLATES, templateToRow } from "@/lib/powerUpStyles";
-import { scrambleCardRows, SCRAMBLE_META } from "@/lib/scrambleRules";
+import { scrambleCardRows, SCRAMBLE_META, CHALLENGE_TYPES, challengeTypeById } from "@/lib/scrambleRules";
 
 export default function AdminTournaments() {
   const [items, setItems] = useState([]);
@@ -29,6 +29,17 @@ export default function AdminTournaments() {
     await supabase.rpc("golf_seed_holes", { p_tournament_id: data.id, p_holes: 18 });
     reload();
     setOpenId(data.id);
+  };
+
+  const remove = async (t) => {
+    const typed = prompt(
+      `Deleting "${t.name}" removes its teams, bag tags, holes, scores and cards permanently.\n\nType the tournament name to confirm:`
+    );
+    if (typed === null) return;
+    if (typed.trim() !== t.name.trim()) { alert("Name didn't match — nothing was deleted."); return; }
+    const { error } = await supabase.from("golf_tournaments").delete().eq("id", t.id);
+    if (error) alert(error.message);
+    reload();
   };
 
   if (openId) return <TournamentEditor id={openId} onBack={() => { setOpenId(null); reload(); }} />;
@@ -57,8 +68,8 @@ export default function AdminTournaments() {
       ) : (
         <div className="space-y-2">
           {items.map((t) => (
-            <button key={t.id} onClick={() => setOpenId(t.id)} className="w-full text-left bg-stone-900 border border-stone-800 rounded-2xl p-4 flex items-center gap-4 hover:border-stone-700 transition">
-              <div className="flex-1 min-w-0">
+            <div key={t.id} className="bg-stone-900 border border-stone-800 rounded-2xl p-4 flex items-center gap-3 hover:border-stone-700 transition">
+              <button onClick={() => setOpenId(t.id)} className="flex-1 min-w-0 text-left">
                 <div className="flex items-center gap-2">
                   <p className="text-stone-100 font-semibold truncate">{t.name}</p>
                   <StatusPill status={t.status} />
@@ -66,8 +77,15 @@ export default function AdminTournaments() {
                 <p className="text-stone-500 text-xs mt-0.5">
                   {[t.course, t.tournament_date, t.format].filter(Boolean).join(" · ")}
                 </p>
-              </div>
-            </button>
+              </button>
+              <button
+                onClick={() => remove(t)}
+                title="Delete tournament"
+                className="p-2 text-stone-600 hover:text-rose-400 transition shrink-0"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -445,32 +463,66 @@ function HoleRow({ hole, onUpdate }) {
       </div>
 
       {open && (
-        <div className="px-3 pb-3 space-y-2.5 border-t border-stone-800 pt-3">
+        <div className="px-3 pb-3 space-y-3 border-t border-stone-800 pt-3">
           <div>
-            <label className="block text-stone-400 text-xs mb-1.5">Challenge name</label>
-            <input
-              defaultValue={hole.challenge || ""}
-              placeholder="e.g. Long Drive, Closest to the Pin"
-              className="admin-input"
-              onBlur={(e) => onUpdate(hole.id, { challenge: e.target.value })}
-            />
+            <label className="block text-stone-400 text-xs mb-1.5">Pick a challenge</label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {CHALLENGE_TYPES.map((ct) => {
+                const on = hole.challenge_type === ct.id;
+                const suits = ct.suggestedPars.includes(hole.par);
+                return (
+                  <button
+                    key={ct.id}
+                    onClick={() => onUpdate(hole.id, {
+                      challenge_type: ct.id,
+                      challenge: ct.label,
+                      challenge_reward: ct.reward,
+                      challenge_effect: ct.effect,
+                    })}
+                    className={`text-left px-2.5 py-2 rounded-lg border text-xs transition ${
+                      on ? "bg-emerald-500 border-emerald-400 text-white" : "bg-stone-950/60 border-stone-700 text-stone-300 hover:border-stone-600"
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <span className="text-sm leading-none">{ct.icon}</span> {ct.label}
+                    </span>
+                    <span className={`block text-[10px] mt-0.5 ${on ? "text-white/80" : "text-stone-500"}`}>
+                      {ct.effect === 0 ? "No stroke change" : `${ct.effect} stroke${Math.abs(ct.effect) === 1 ? "" : "s"}`}
+                      {!suits && ` · usually par ${ct.suggestedPars.join("/")}`}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div>
-            <label className="block text-stone-400 text-xs mb-1.5">Reward <span className="text-stone-600">(what the winner gets)</span></label>
-            <input
-              defaultValue={hole.challenge_reward || ""}
-              placeholder="e.g. Free Hot Streak token"
-              className="admin-input"
-              onBlur={(e) => onUpdate(hole.id, { challenge_reward: e.target.value })}
-            />
-          </div>
+
           {hasChallenge && (
-            <button
-              onClick={() => { onUpdate(hole.id, { challenge: "", challenge_reward: "" }); setOpen(false); }}
-              className="text-rose-400 hover:text-rose-300 text-xs flex items-center gap-1.5"
-            >
-              <Trash2 className="w-3.5 h-3.5" /> Remove challenge from this hole
-            </button>
+            <>
+              <div className="bg-stone-950/60 border border-stone-800 rounded-lg p-2.5">
+                <p className="text-stone-400 text-[11px]">Players see</p>
+                <p className="text-stone-200 text-xs mt-0.5">{hole.challenge}</p>
+                <p className="text-emerald-400 text-[11px] mt-1">{hole.challenge_reward}</p>
+                <p className="text-stone-500 text-[11px] mt-1">
+                  Winning team ticks it on their scorecard{hole.challenge_effect ? ` and gets ${hole.challenge_effect} stroke${Math.abs(hole.challenge_effect) === 1 ? "" : "s"}` : ""}.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-stone-400 text-xs mb-1.5">Custom wording <span className="text-stone-600">(optional)</span></label>
+                <input
+                  defaultValue={hole.challenge || ""}
+                  className="admin-input"
+                  onBlur={(e) => onUpdate(hole.id, { challenge: e.target.value })}
+                />
+              </div>
+
+              <button
+                onClick={() => { onUpdate(hole.id, { challenge: "", challenge_reward: "", challenge_type: "", challenge_effect: 0 }); setOpen(false); }}
+                className="text-rose-400 hover:text-rose-300 text-xs flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Remove challenge from this hole
+              </button>
+            </>
           )}
         </div>
       )}
