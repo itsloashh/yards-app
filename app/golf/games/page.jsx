@@ -3,6 +3,7 @@ import { useState } from "react";
 import { BookOpen, Flag, X, Loader2, Users, Gauge, ChevronRight, Maximize2 } from "lucide-react";
 import { useGolfGames, gameHeaderImage, gameRulesImages } from "@/lib/golf";
 import ImageZoom from "@/components/ImageZoom";
+import HowToPlay from "@/components/golf/HowToPlay";
 
 export default function GolfGames() {
   const { games, loading } = useGolfGames();
@@ -74,6 +75,8 @@ export default function GolfGames() {
 
 function GameDetail({ game, onClose }) {
   const [zoomAt, setZoomAt] = useState(null);
+  const [showRules, setShowRules] = useState(false);
+  const isScramble = /scramble/i.test(game?.name || "");
   const header = gameHeaderImage(game);
   const sheets = gameRulesImages(game);
 
@@ -123,6 +126,15 @@ function GameDetail({ game, onClose }) {
               </div>
             )}
 
+            {isScramble && (
+              <button
+                onClick={() => setShowRules(true)}
+                className="w-full mb-5 py-3 rounded-xl bg-lime-300 text-emerald-950 font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.99] transition"
+              >
+                <BookOpen className="w-4 h-4" /> Open the full rules
+              </button>
+            )}
+
             {/* Written rules */}
             <h3 className="text-lime-300 font-bold text-sm uppercase tracking-wide mb-2">How to Play</h3>
             {game.rules ? (
@@ -137,6 +149,7 @@ function GameDetail({ game, onClose }) {
       {zoomAt !== null && (
         <ImageZoom images={sheets} index={zoomAt} caption={game.name} onClose={() => setZoomAt(null)} />
       )}
+      {showRules && <HowToPlay onClose={() => setShowRules(false)} />}
     </>
   );
 }

@@ -1,14 +1,17 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { Minus, Plus, Check, Loader2, CloudOff, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
-import { saveScore, parFor, formatToPar } from "@/lib/tournament";
+import { saveScore, parFor, formatToPar, holeAdjustment } from "@/lib/tournament";
 import HoleReviewModal from "@/components/golf/HoleReviewModal";
 
 export default function Scorecard({ round, liveTeam, cards = [], onSaved }) {
   const { team, holes = [], player } = round;
   const tag = player?.bag_tag;
   const holeCount = holes.length || round.tournament?.holes_count || 18;
-  const startHole = team?.starting_hole || 1;
+  const holeNumbers = holes.length
+    ? holes.map((h) => h.hole_number)
+    : Array.from({ length: holeCount }, (_, i) => i + 1);
+  const startHole = team?.starting_hole || holeNumbers[0] || 1;
 
   const [active, setActive] = useState(startHole);
   const [strokes, setStrokes] = useState(0);
@@ -39,12 +42,14 @@ export default function Scorecard({ round, liveTeam, cards = [], onSaved }) {
   // Where "Save" sends them next: the following hole in play order, skipping
   // any already filled in, so a group can't land back on the same hole twice.
   const nextHole = useMemo(() => {
-    for (let step = 1; step <= holeCount; step++) {
-      const h = ((active - 1 + step) % holeCount) + 1;
+    const list = holeNumbers;
+    const i = list.indexOf(active);
+    for (let step = 1; step <= list.length; step++) {
+      const h = list[(i + step) % list.length];
       if (!(scoreMap[h]?.strokes > 0)) return h;
     }
-    return (active % holeCount) + 1;
-  }, [active, holeCount, scoreMap]);
+    return list[(i + 1) % list.length];
+  }, [active, holeNumbers, scoreMap]);
 
   const commit = async () => {
     if (strokes <= 0) { setStatus("error"); setMessage("Enter at least 1 stroke"); return; }
@@ -57,7 +62,7 @@ export default function Scorecard({ round, liveTeam, cards = [], onSaved }) {
       // Review step: shows anything the score earned and lets the group log
       // what they used here. Advancing waits until it's closed so the hole
       // in the modal always matches the hole they just played.
-      setReview({ hole: active, granted: res.granted || [] });
+      setReview({ hole: active, granted: res.granted || [], strokes, penalties });
     } else if (res.queued) {
       setStatus("queued");
       setMessage(res.error);
@@ -82,7 +87,7 @@ export default function Scorecard({ round, liveTeam, cards = [], onSaved }) {
     <div className="px-4 py-4">
       {/* Hole selector strip */}
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-2 -mx-1 px-1">
-        {Array.from({ length: holeCount }, (_, i) => i + 1).map((h) => {
+        {holeNumbers.map((h) => {
           const done = scoreMap[h]?.strokes > 0;
           const isActive = h === active;
           return (
@@ -106,7 +111,7 @@ export default function Scorecard({ round, liveTeam, cards = [], onSaved }) {
       {/* Active hole */}
       <div className="golf-card rounded-2xl p-5 mt-3">
         <div className="flex items-center justify-between">
-          <button onClick={() => setActive((h) => (h > 1 ? h - 1 : holeCount))} className="w-9 h-9 rounded-full bg-emerald-950/60 border border-lime-200/15 flex items-center justify-center">
+          <button onClick={() => setActive((h) => holeNumbers[(holeNumbers.indexOf(h) - 1 + holeNumbers.length) % holeNumbers.length])} className="w-9 h-9 rounded-full bg-emerald-950/60 border border-lime-200/15 flex items-center justify-center">
             <ChevronLeft className="w-5 h-5 text-amber-50/80" />
           </button>
           <div className="text-center">
@@ -119,10 +124,17 @@ export default function Scorecard({ round, liveTeam, cards = [], onSaved }) {
               </span>
             )}
           </div>
-          <button onClick={() => setActive((h) => (h % holeCount) + 1)} className="w-9 h-9 rounded-full bg-emerald-950/60 border border-lime-200/15 flex items-center justify-center">
+          <button onClick={() => setActive((h) => holeNumbers[(holeNumbers.indexOf(h) + 1) % holeNumbers.length])} className="w-9 h-9 rounded-full bg-emerald-950/60 border border-lime-200/15 flex items-center justify-center">
             <ChevronRight className="w-5 h-5 text-amber-50/80" />
           </button>
         </div>
+
+        {holeInfo?.is_jackpot && (
+          <div className="mt-3 bg-amber-300/15 border border-amber-300/40 rounded-xl px-3 py-2 text-center">
+            <p className="text-amber-200 text-xs font-bold uppercase tracking-wide">💰 Jackpot hole</p>
+            <p className="text-amber-50/85 text-[11px] mt-0.5">All bonuses count double here</p>
+          </div>
+        )}
 
         {holeInfo?.challenge && (
           <div className="mt-3 bg-lime-300/12 border border-lime-300/30 rounded-xl px-3 py-2 text-center">
@@ -176,12 +188,14 @@ export default function Scorecard({ round, liveTeam, cards = [], onSaved }) {
       </div>
 
       {/* Running card */}
-      <RunningCard scoreMap={scoreMap} holes={holes} holeCount={holeCount} onPick={setActive} active={active} />
+      <RunningCard scoreMap={scoreMap} holes={holes} holeCount={holeCount} onPick={setActive} active={active} team={liveTeam} cards={cards} />
 
       {review && (
         <HoleReviewModal
           hole={review.hole}
           granted={review.granted}
+          strokes={review.strokes}
+          penalties={review.penalties}
           tag={tag}
           cards={cards}
           ledger={liveTeam?.power_up_uses || []}
@@ -220,12 +234,15 @@ function Counter({ label, value, onChange, min = 0, max = 20, big, accent }) {
   );
 }
 
-function RunningCard({ scoreMap, holes, holeCount, onPick, active }) {
-  const rows = Array.from({ length: holeCount }, (_, i) => i + 1);
+function RunningCard({ scoreMap, holes, holeCount, onPick, active, team, cards }) {
+  const rows = holes.length ? holes.map((h) => h.hole_number) : Array.from({ length: holeCount }, (_, i) => i + 1);
   let total = 0, parTotal = 0;
   for (const h of rows) {
     const s = scoreMap[h];
-    if (s?.strokes > 0) { total += s.strokes + (s.penalties || 0); parTotal += parFor(holes, h); }
+    if (s?.strokes > 0) {
+      total += s.strokes + (s.penalties || 0) + holeAdjustment(team, h, cards, holes);
+      parTotal += parFor(holes, h);
+    }
   }
 
   return (
@@ -239,7 +256,7 @@ function RunningCard({ scoreMap, holes, holeCount, onPick, active }) {
       <div className="grid grid-cols-9 gap-1">
         {rows.map((h) => {
           const s = scoreMap[h];
-          const val = s?.strokes > 0 ? s.strokes + (s.penalties || 0) : null;
+          const val = s?.strokes > 0 ? s.strokes + (s.penalties || 0) + holeAdjustment(team, h, cards, holes) : null;
           const d = val != null ? val - parFor(holes, h) : null;
           return (
             <button

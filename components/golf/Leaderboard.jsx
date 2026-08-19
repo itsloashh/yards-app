@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { Trophy, Radio, ChevronDown, Zap } from "lucide-react";
-import { rankTeams, formatToPar, parFor } from "@/lib/tournament";
+import { rankTeams, formatToPar, parFor, holeAdjustment } from "@/lib/tournament";
 
 export default function Leaderboard({ state, myTeamId, lastUpdate }) {
   const holes = state?.holes || [];
@@ -17,8 +17,8 @@ export default function Leaderboard({ state, myTeamId, lastUpdate }) {
 
   const ranked = useMemo(() => {
     const pool = flight === "all" ? teams : teams.filter((t) => t.flight === flight);
-    return rankTeams(pool, holes);
-  }, [teams, holes, flight]);
+    return rankTeams(pool, holes, powerUps);
+  }, [teams, holes, flight, powerUps]);
 
   return (
     <div className="px-4 py-4">
@@ -103,14 +103,14 @@ export default function Leaderboard({ state, myTeamId, lastUpdate }) {
                     <div className="grid grid-cols-3 gap-2 mb-3">
                       <Mini label="Strokes" value={t.totals.strokes} />
                       <Mini label="Penalties" value={t.totals.penalties} accent={t.totals.penalties > 0} />
-                      <Mini label="Total" value={t.totals.total} />
+                      <Mini label="Bonuses" value={t.totals.adjustments === 0 ? "—" : t.totals.adjustments} />
                     </div>
 
                     {/* per-hole strip */}
                     <div className="grid grid-cols-9 gap-1">
                       {(holes.length ? holes.map((h) => h.hole_number) : []).map((h) => {
                         const s = (t.scores || []).find((x) => x.hole_number === h);
-                        const val = s?.strokes > 0 ? s.strokes + (s.penalties || 0) : null;
+                        const val = s?.strokes > 0 ? s.strokes + (s.penalties || 0) + holeAdjustment(t, h, powerUps, holes) : null;
                         const d = val != null ? val - parFor(holes, h) : null;
                         return (
                           <div key={h} className="rounded-md py-1 text-center bg-emerald-950/50 border border-lime-200/10">

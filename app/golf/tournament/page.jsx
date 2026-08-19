@@ -7,6 +7,7 @@ import RoundInfo from "@/components/golf/RoundInfo";
 import Scorecard from "@/components/golf/Scorecard";
 import Leaderboard from "@/components/golf/Leaderboard";
 import PowerUps from "@/components/golf/PowerUps";
+import HowToPlay from "@/components/golf/HowToPlay";
 
 const TABS = [
   { id: "info", label: "Round", icon: Info },
@@ -18,6 +19,7 @@ const TABS = [
 export default function TournamentPage() {
   const { round, loading, error, load, signOut } = useRound();
   const [tab, setTab] = useState("info");
+  const [showRules, setShowRules] = useState(false);
   const pending = useQueueSync();
 
   const tournamentId = round?.tournament?.id;
@@ -85,9 +87,11 @@ export default function TournamentPage() {
         </div>
       </div>
 
-      {tab === "info" && <RoundInfo round={round} state={state} myTeamId={myTeamId} />}
+      {tab === "info" && <RoundInfo round={round} state={state} myTeamId={myTeamId} onShowRules={() => setShowRules(true)} />}
       {tab === "card" && <Scorecard round={round} liveTeam={liveTeam} cards={state?.power_ups || round?.power_ups || []} onSaved={refresh} />}
       {tab === "board" && <Leaderboard state={state} myTeamId={myTeamId} lastUpdate={lastUpdate} />}
+
+      {showRules && <HowToPlay onClose={() => setShowRules(false)} />}
       {tab === "power" && <PowerUps round={round} state={state} myTeamId={myTeamId} onChanged={refresh} />}
     </div>
   );

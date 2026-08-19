@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback } from "react";
 import { Loader2, Plus, Trash2, X, Trophy, Check, Users, Zap, Flag, ChevronLeft, Tag as TagIcon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import AdminPowerUpCard from "@/components/golf/AdminPowerUpCard";
-import { defaultColorFor } from "@/lib/powerUpStyles";
+import { isAutoAwarded, CARD_TEMPLATES, templateToRow } from "@/lib/powerUpStyles";
+import { scrambleCardRows, SCRAMBLE_META } from "@/lib/scrambleRules";
 
 export default function AdminTournaments() {
   const [items, setItems] = useState([]);
@@ -164,7 +165,7 @@ function TournamentEditor({ id, onBack }) {
 
       {tab === "setup" && <SetupTab t={t} saveT={saveT} />}
       {tab === "teams" && <TeamsTab id={id} teams={teams} players={players} reload={reload} />}
-      {tab === "holes" && <HolesTab id={id} holes={holes} reload={reload} />}
+      {tab === "holes" && <HolesTab id={id} tournament={t} holes={holes} reload={reload} />}
       {tab === "power" && <PowerTab id={id} powerUps={powerUps} holes={holes} reload={reload} />}
     </div>
   );
@@ -251,8 +252,20 @@ function TeamsTab({ id, teams, players, reload }) {
 
             <div className="grid grid-cols-3 gap-2 mt-3">
               <F label="Tee time" small>
-                <input defaultValue={team.tee_time || ""} placeholder="8:10 AM" className="admin-input"
-                  onBlur={(e) => updateTeam(team.id, { tee_time: e.target.value })} />
+                <input
+                  type="datetime-local"
+                  defaultValue={team.tee_time_at ? new Date(team.tee_time_at).toISOString().slice(0, 16) : ""}
+                  className="admin-input"
+                  onBlur={(e) => {
+                    const v = e.target.value;
+                    if (!v) { updateTeam(team.id, { tee_time_at: null, tee_time: "" }); return; }
+                    const d = new Date(v);
+                    updateTeam(team.id, {
+                      tee_time_at: d.toISOString(),
+                      tee_time: d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+                    });
+                  }}
+                />
               </F>
               <F label="Start hole" small>
                 <input defaultValue={team.starting_hole ?? 1} inputMode="numeric" className="admin-input"
@@ -266,6 +279,7 @@ function TeamsTab({ id, teams, players, reload }) {
 
             <p className="text-stone-500 text-[11px] mt-3 mb-1.5">
               Teams sharing a tee time <em>and</em> start hole are grouped as competitors.
+              Setting a real date and time turns on the countdown on the player's Round tab.
             </p>
 
             <div className="space-y-1.5">
@@ -288,42 +302,102 @@ function TeamsTab({ id, teams, players, reload }) {
   );
 }
 
-function HolesTab({ id, holes, reload }) {
+function HolesTab({ id, tournament, holes, reload }) {
+  const [busy, setBusy] = useState(false);
+
+  const shape = (tournament?.holes_count ?? 18) === 9
+    ? (tournament?.nine_side === "back" ? "back9" : "front9")
+    : "18";
+
+  const applyShape = async (next) => {
+    const label = next === "18" ? "18 holes" : next === "back9" ? "the back 9 (holes 10-18)" : "the front 9 (holes 1-9)";
+    if (holes.length && !confirm(`Switch this tournament to ${label}? Holes outside that range are removed, along with any scores on them.`)) return;
+    setBusy(true);
+    await supabase.rpc("golf_setup_holes", {
+      p_tournament_id: id,
+      p_holes: next === "18" ? 18 : 9,
+      p_side: next === "back9" ? "back" : next === "front9" ? "front" : null,
+    });
+    setBusy(false);
+    reload();
+  };
+
+  const setJackpot = async (hole) => {
+    setBusy(true);
+    await supabase.rpc("golf_set_jackpot_hole", { p_tournament_id: id, p_hole: hole });
+    setBusy(false);
+    reload();
+  };
+
   const update = async (holeId, patch) => {
     await supabase.from("golf_tournament_holes").update(patch).eq("id", holeId);
     reload();
   };
-  const seed = async () => {
-    await supabase.rpc("golf_seed_holes", { p_tournament_id: id, p_holes: 18 });
-    reload();
-  };
 
   const challengeCount = holes.filter((h) => (h.challenge || "").trim()).length;
-
-  if (holes.length === 0) {
-    return (
-      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4 text-center py-8">
-        <p className="text-stone-400 text-sm mb-3">No holes set up.</p>
-        <button onClick={seed} className="px-4 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-bold">Create 18 holes</button>
-      </div>
-    );
-  }
+  const jackpot = holes.find((h) => h.is_jackpot);
 
   return (
     <div className="space-y-3">
+      {/* Round shape */}
       <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4">
-        <p className="text-stone-300 text-sm font-medium">Course setup</p>
-        <p className="text-stone-500 text-xs mt-0.5">
-          Set par for each hole, then add a challenge to any hole you want to feature.
-          {challengeCount > 0 && <> Currently <strong className="text-emerald-400">{challengeCount}</strong> challenge hole{challengeCount === 1 ? "" : "s"}.</>}
+        <p className="text-stone-300 text-sm font-medium">How many holes?</p>
+        <p className="text-stone-500 text-xs mt-0.5 mb-3">
+          Nine-hole rounds keep the course's real numbering, so a back nine runs 10 through 18.
         </p>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { id: "18", label: "18 holes", sub: "Full round" },
+            { id: "front9", label: "Front 9", sub: "Holes 1-9" },
+            { id: "back9", label: "Back 9", sub: "Holes 10-18" },
+          ].map((o) => (
+            <button key={o.id} onClick={() => applyShape(o.id)} disabled={busy}
+              className={`px-3 py-2.5 rounded-xl border text-left transition ${
+                shape === o.id ? "bg-emerald-500 border-emerald-400 text-white" : "bg-stone-950/50 border-stone-700 text-stone-400 hover:border-stone-600"
+              }`}>
+              <span className="block text-sm font-semibold">{o.label}</span>
+              <span className="block text-[11px] opacity-80">{o.sub}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="space-y-2">
-        {holes.map((h) => (
-          <HoleRow key={h.id} hole={h} onUpdate={update} />
-        ))}
-      </div>
+      {holes.length === 0 ? (
+        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4 text-center py-8">
+          <p className="text-stone-400 text-sm">Pick a round length above to create the holes.</p>
+        </div>
+      ) : (
+        <>
+          {/* Jackpot */}
+          <div className="bg-stone-900 border border-amber-500/30 rounded-2xl p-4">
+            <p className="text-amber-300 text-sm font-medium">💰 Jackpot hole</p>
+            <p className="text-stone-500 text-xs mt-0.5 mb-3">
+              All bonuses on this hole count double. Pick one, or none.
+            </p>
+            <div className="grid grid-cols-9 gap-1">
+              {holes.map((h) => (
+                <button key={h.id} onClick={() => setJackpot(h.is_jackpot ? null : h.hole_number)} disabled={busy}
+                  className={`py-1.5 rounded text-xs font-medium border transition ${
+                    h.is_jackpot ? "bg-amber-400 text-stone-900 border-amber-300" : "bg-stone-950 text-stone-500 border-stone-700 hover:border-stone-600"
+                  }`}>{h.hole_number}</button>
+              ))}
+            </div>
+            {jackpot && <p className="text-amber-300/80 text-xs mt-2">Hole {jackpot.hole_number} is the Jackpot Hole. Tap it again to clear.</p>}
+          </div>
+
+          <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4">
+            <p className="text-stone-300 text-sm font-medium">Par & challenges</p>
+            <p className="text-stone-500 text-xs mt-0.5">
+              Set par for each hole, then add a challenge to any hole you want to feature.
+              {challengeCount > 0 && <> Currently <strong className="text-emerald-400">{challengeCount}</strong> challenge hole{challengeCount === 1 ? "" : "s"}.</>}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            {holes.map((h) => <HoleRow key={h.id} hole={h} onUpdate={update} />)}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -335,7 +409,9 @@ function HoleRow({ hole, onUpdate }) {
   return (
     <div className={`rounded-xl border bg-stone-900 ${hasChallenge ? "border-emerald-500/40" : "border-stone-800"}`}>
       <div className="flex items-center gap-2 p-3">
-        <span className="w-9 h-9 rounded-lg bg-stone-800 text-stone-200 text-sm font-bold flex items-center justify-center shrink-0">
+        <span className={`w-9 h-9 rounded-lg text-sm font-bold flex items-center justify-center shrink-0 ${
+          hole.is_jackpot ? "bg-amber-400 text-stone-900" : "bg-stone-800 text-stone-200"
+        }`}>
           {hole.hole_number}
         </span>
 
@@ -406,23 +482,13 @@ function PowerTab({ id, powerUps, holes, reload }) {
   const holeCount = holes.length || 18;
   const [saving, setSaving] = useState(false);
 
-  const add = async (kind) => {
+  const addFromTemplate = async (tpl) => {
     setSaving(true);
-    await supabase.from("golf_power_ups").insert({
-      tournament_id: id,
-      name: kind === "hazard" ? "New Caution" : "New Power-Up",
-      kind,
-      icon: kind === "hazard" ? "\u26A0\uFE0F" : "\u26A1",
-      color: defaultColorFor(kind),
-      uses_per_team: 1,
-      enabled: true,
-      sort_order: powerUps.length,
-    });
+    await supabase.from("golf_power_ups").insert(templateToRow(tpl, id, powerUps.length));
     setSaving(false);
     reload();
   };
 
-  // Debounced-ish: write straight through, the card holds its own text state
   const change = async (puId, patch) => {
     await supabase.from("golf_power_ups").update(patch).eq("id", puId);
     reload();
@@ -434,50 +500,98 @@ function PowerTab({ id, powerUps, holes, reload }) {
     reload();
   };
 
-  const boosts = powerUps.filter((p) => p.kind !== "hazard");
-  const cautions = powerUps.filter((p) => p.kind === "hazard");
+  const loadScrambleDeck = async () => {
+    if (powerUps.length && !confirm("Add the full Yard$ 2v2 Scramble card set? Existing cards are kept — you may end up with duplicates.")) return;
+    setSaving(true);
+    await supabase.from("golf_power_ups").insert(scrambleCardRows(id));
+    setSaving(false);
+    reload();
+  };
+
+  const automatic = powerUps.filter((p) => isAutoAwarded(p));
+  const manual = powerUps.filter((p) => !isAutoAwarded(p));
+
+  const autoTemplates = CARD_TEMPLATES.filter((t) => t.preset);
+  const manualTemplates = CARD_TEMPLATES.filter((t) => !t.preset);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        <button onClick={() => add("power_up")} disabled={saving}
-          className="px-4 py-2.5 rounded-xl text-sm font-medium bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 transition flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Add Power-Up
-        </button>
-        <button onClick={() => add("hazard")} disabled={saving}
-          className="px-4 py-2.5 rounded-xl text-sm font-medium bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 transition flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Add Caution
+    <div className="space-y-6">
+      {/* One-tap official deck */}
+      <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+        <h3 className="text-white font-bold">{SCRAMBLE_META.name}</h3>
+        <p className="text-stone-400 text-xs mt-1 leading-relaxed">
+          Loads every Yard$ Twist from the rule sheet already configured — Hot Streak on birdies,
+          Bomber Bonus on par 4s and 5s, 15-Footer and Closest to the Pin worth a stroke, The Snake, and the rest.
+        </p>
+        <button onClick={loadScrambleDeck} disabled={saving}
+          className="mt-3 px-4 py-2.5 rounded-xl text-sm font-bold bg-emerald-500 text-white disabled:opacity-50">
+          Load the official card set
         </button>
       </div>
 
-      <p className="text-stone-500 text-xs">
-        Tap a card to expand it. The toggle switches it on or off for the round without deleting it —
-        players only see cards that are on.
-      </p>
+      {/* ── Automatic: rewards & penalties from the score ── */}
+      <PowerSection
+        title="Rewards & Penalties"
+        blurb="Given out automatically when a team saves their score for a hole. The player sees a popup and it lands in their inventory."
+        tone="sky"
+        templates={autoTemplates}
+        onAdd={addFromTemplate}
+        saving={saving}
+      >
+        {automatic.length === 0
+          ? <Empty text="Nothing automatic yet — add one above." />
+          : automatic.map((pu) => (
+              <AdminPowerUpCard key={pu.id} card={pu} holeCount={holeCount} onChange={change} onDelete={del} />
+            ))}
+      </PowerSection>
 
-      <Section title="Power-Ups" count={boosts.length}>
-        {boosts.map((pu) => (
-          <AdminPowerUpCard key={pu.id} card={pu} holeCount={holeCount} onChange={change} onDelete={del} />
-        ))}
-        {boosts.length === 0 && <Empty text="No power-ups yet." />}
-      </Section>
-
-      <Section title="Cautions" count={cautions.length}>
-        {cautions.map((pu) => (
-          <AdminPowerUpCard key={pu.id} card={pu} holeCount={holeCount} onChange={change} onDelete={del} />
-        ))}
-        {cautions.length === 0 && <Empty text="No cautions yet." />}
-      </Section>
+      {/* ── Manual: cards teams carry ── */}
+      <PowerSection
+        title="Power-Ups & Bonuses"
+        blurb="Teams start the round holding these and choose when to play them. They tick them off on the hole they use them."
+        tone="amber"
+        templates={manualTemplates}
+        onAdd={addFromTemplate}
+        saving={saving}
+      >
+        {manual.length === 0
+          ? <Empty text="No carried cards yet — add one above." />
+          : manual.map((pu) => (
+              <AdminPowerUpCard key={pu.id} card={pu} holeCount={holeCount} onChange={change} onDelete={del} />
+            ))}
+      </PowerSection>
     </div>
   );
 }
 
-function Section({ title, count, children }) {
+function PowerSection({ title, blurb, tone, templates, onAdd, saving, children }) {
+  const tones = {
+    sky: "border-sky-500/25 bg-sky-500/5",
+    amber: "border-amber-500/25 bg-amber-500/5",
+  };
   return (
     <div>
-      <h3 className="text-stone-300 font-semibold text-sm mb-2">
-        {title} <span className="text-stone-600">({count})</span>
-      </h3>
+      <div className={`rounded-2xl border ${tones[tone]} p-4 mb-3`}>
+        <h3 className="text-white font-bold">{title}</h3>
+        <p className="text-stone-400 text-xs mt-1 leading-relaxed">{blurb}</p>
+
+        <div className="flex flex-wrap gap-2 mt-3">
+          {templates.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => onAdd(t)}
+              disabled={saving}
+              className="text-left px-3 py-2 rounded-xl bg-stone-900 border border-stone-700 hover:border-stone-500 transition disabled:opacity-50"
+            >
+              <span className="flex items-center gap-1.5 text-stone-200 text-sm font-medium">
+                <span className="text-base leading-none">{t.icon}</span> {t.label}
+              </span>
+              <span className="block text-stone-500 text-[11px] mt-0.5">{t.hint}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="space-y-2">{children}</div>
     </div>
   );

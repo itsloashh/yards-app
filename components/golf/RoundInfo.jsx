@@ -1,10 +1,21 @@
 "use client";
-import { Clock, Flag, Users, Swords, Target, MapPin, Zap, AlertTriangle, Gift } from "lucide-react";
-import { colorOf, ruleLabel, remainingFor, grantsFor, spendsFor, isAutoAwarded, awardRuleLabel } from "@/lib/powerUpStyles";
+import { Flag, Users, Swords, Target, MapPin, Zap, AlertTriangle, Gift, BookOpen, Coins } from "lucide-react";
+import TeeCountdown from "@/components/golf/TeeCountdown";
+import { colorOf, ruleLabel, remainingFor, grantsFor, spendsFor, isAutoAwarded, isLogged, receivedCount, acquireMode } from "@/lib/powerUpStyles";
 
-export default function RoundInfo({ round, state, myTeamId }) {
+export default function RoundInfo({ round, state, myTeamId, onShowRules }) {
   const { tournament, team, player, partners = [], competitors = [], holes = [] } = round;
   const challengeHoles = holes.filter((h) => h.challenge && h.challenge.trim());
+  const jackpot = holes.find((h) => h.is_jackpot);
+
+  const holesLabel = (() => {
+    if (!holes.length) return "";
+    if ((tournament?.holes_count ?? 18) === 9) {
+      const side = tournament?.nine_side === "back" ? "Back 9" : "Front 9";
+      return `${side} — holes ${holes[0].hole_number}–${holes[holes.length - 1].hole_number}`;
+    }
+    return "18 holes";
+  })();
 
   return (
     <div className="px-4 py-4 space-y-3">
@@ -18,10 +29,22 @@ export default function RoundInfo({ round, state, myTeamId }) {
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-3 mt-4">
-          <Stat icon={Clock} label="Tee time" value={team?.tee_time || "TBD"} />
-          <Stat icon={Flag} label="Start hole" value={`#${team?.starting_hole ?? 1}`} />
+        <div className="mt-4">
+          <TeeCountdown team={team} />
         </div>
+
+        {holesLabel && (
+          <p className="text-amber-50/55 text-xs mt-3 flex items-center gap-1.5">
+            <Flag className="w-3.5 h-3.5" /> {holesLabel}
+          </p>
+        )}
+
+        <button
+          onClick={() => onShowRules?.()}
+          className="w-full mt-3 py-2.5 rounded-xl bg-lime-300/15 border border-lime-300/35 text-lime-200 text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.99] transition"
+        >
+          <BookOpen className="w-4 h-4" /> How to Play
+        </button>
       </div>
 
       {/* Your team */}
@@ -64,6 +87,23 @@ export default function RoundInfo({ round, state, myTeamId }) {
           </div>
         )}
       </div>
+
+      {/* Jackpot hole */}
+      {jackpot && (
+        <div className="golf-card rounded-2xl p-5 border-amber-300/40">
+          <h2 className="text-white font-bold flex items-center gap-2">
+            <Coins className="w-4 h-4 text-amber-300" /> Jackpot Hole
+          </h2>
+          <div className="flex items-center gap-3 mt-3">
+            <span className="w-11 h-11 rounded-xl bg-amber-300 text-stone-900 font-bold text-lg flex items-center justify-center shrink-0">
+              {jackpot.hole_number}
+            </span>
+            <p className="text-amber-50/85 text-sm">
+              All bonuses on this hole are worth <strong className="text-amber-300">double</strong>. Big risk. Bigger reward.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Challenge holes */}
       <div className="golf-card rounded-2xl p-5">
@@ -123,16 +163,20 @@ function Inventory({ round, state, myTeamId }) {
       <div className="space-y-2">
         {cards.map((card) => {
           const c = colorOf(card.color);
-          const left = Math.max(0, remainingFor(card, uses));
           const grants = grantsFor(card.id, uses);
           const spends = spendsFor(card.id, uses);
           const earned = grants.reduce((a, g) => a + (g.delta ?? 1), 0);
           const hazard = card.kind === "hazard";
-          const total = (card.uses_per_team ?? 0) + earned;
+          const logged = isLogged(card);
+
+          // Logged penalties accumulate; everything else depletes.
+          const left = logged ? receivedCount(card, uses) : Math.max(0, remainingFor(card, uses));
+          const total = logged ? Math.max(left, 1) : (card.uses_per_team ?? 0) + earned;
+          const highlight = logged ? left > 0 : left > 0;
 
           return (
             <div key={card.id} className={`rounded-xl border px-3 py-2.5 transition ${
-              left > 0 ? `${c.ring} ${c.tint} ${c.glow}` : "border-lime-200/10 bg-emerald-950/40"
+              highlight ? `${c.ring} ${c.tint} ${c.glow}` : "border-lime-200/10 bg-emerald-950/40"
             }`}>
               <div className="flex items-center gap-2.5">
                 <span className="w-8 h-8 rounded-lg bg-emerald-950/60 flex items-center justify-center shrink-0 overflow-hidden">
@@ -149,15 +193,16 @@ function Inventory({ round, state, myTeamId }) {
                   <p className="text-amber-50/45 text-[11px]">
                     {ruleLabel(card)}
                     {isAutoAwarded(card) && <span className="text-lime-300/70"> · auto</span>}
+                    {logged && <span className="text-rose-300/70"> · penalty</span>}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
-                  {Array.from({ length: Math.min(Math.max(total, 1), 5) }, (_, i) => (
+                  {!logged && Array.from({ length: Math.min(Math.max(total, 1), 5) }, (_, i) => (
                     <span key={i} className={`w-2 h-2 rounded-full ${i < left ? c.dot : "bg-amber-50/15"}`} />
                   ))}
                   <span className={`ml-1 text-xs font-bold ${left > 0 ? c.text : "text-amber-50/35"}`}>
-                    {left}
+                    {logged ? `${left}×` : left}
                   </span>
                 </div>
               </div>
@@ -166,7 +211,7 @@ function Inventory({ round, state, myTeamId }) {
                 <div className="flex flex-wrap gap-1 mt-2 pl-10">
                   {grants.map((g) => (
                     <span key={g.id} className={`text-[10px] ${c.chip} px-1.5 py-0.5 rounded-full`}>
-                      +{g.delta ?? 1} earned{g.hole_number ? ` · hole ${g.hole_number}` : ""}
+                      {logged ? "hole " + (g.hole_number || "?") : `+${g.delta ?? 1} earned${g.hole_number ? ` · hole ${g.hole_number}` : ""}`}
                     </span>
                   ))}
                   {spends.map((u) => (
@@ -180,15 +225,6 @@ function Inventory({ round, state, myTeamId }) {
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function Stat({ icon: Icon, label, value }) {
-  return (
-    <div className="bg-emerald-950/55 rounded-xl px-3 py-2.5 border border-lime-200/10">
-      <p className="text-amber-50/55 text-[11px] flex items-center gap-1"><Icon className="w-3 h-3" /> {label}</p>
-      <p className="text-white font-bold mt-0.5">{value}</p>
     </div>
   );
 }

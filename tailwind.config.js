@@ -3,6 +3,9 @@ module.exports = {
   content: [
     "./app/**/*.{js,jsx}",
     "./components/**/*.{js,jsx}",
+    // Design tokens (power-up colours/glows) live here as literal class
+    // strings — without this they get purged from the production build.
+    "./lib/**/*.{js,jsx}",
   ],
   theme: {
     extend: {

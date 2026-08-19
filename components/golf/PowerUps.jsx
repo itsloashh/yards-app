@@ -2,7 +2,7 @@
 import { useState, useMemo } from "react";
 import { Zap, AlertTriangle, Check, Loader2, Undo2, Users, Lock } from "lucide-react";
 import { usePowerUp, undoPowerUp } from "@/lib/tournament";
-import { colorOf, eligibility, ruleLabel, remainingFor, grantsFor, spendsFor, isAutoAwarded } from "@/lib/powerUpStyles";
+import { colorOf, eligibility, ruleLabel, remainingFor, grantsFor, spendsFor, isAutoAwarded, isLogged, receivedCount } from "@/lib/powerUpStyles";
 
 export default function PowerUps({ round, state, myTeamId, onChanged }) {
   const tag = round?.player?.bag_tag;
@@ -27,7 +27,10 @@ export default function PowerUps({ round, state, myTeamId, onChanged }) {
   // are counted the same way the database counts them.
   const remaining = useMemo(() => {
     const m = {};
-    for (const c of allCards) m[c.id] = remainingFor(c, myUses);
+    for (const c of allCards) {
+      // Logged penalties never run out — they're recorded, not spent.
+      m[c.id] = isLogged(c) ? Infinity : remainingFor(c, myUses);
+    }
     return m;
   }, [allCards, myUses]);
 
@@ -95,8 +98,8 @@ export default function PowerUps({ round, state, myTeamId, onChanged }) {
               {boosts.map((card) => (
                 <ClaimCard
                   key={card.id} card={card} hole={hole} holes={holes}
-                  left={Math.max(0, remaining[card.id] ?? 0)}
-                  mine={spendsFor(card.id, myUses)}
+                  left={remaining[card.id] === Infinity ? Infinity : Math.max(0, remaining[card.id] ?? 0)}
+                  mine={isLogged(card) ? grantsFor(card.id, myUses).filter((g) => (g.source || "manual") === "manual") : spendsFor(card.id, myUses)}
                   grants={grantsFor(card.id, myUses)}
                   busy={busy} onClaim={claim} onUndo={undo}
                   picked={picked[card.id] || ""}
@@ -111,8 +114,8 @@ export default function PowerUps({ round, state, myTeamId, onChanged }) {
               {cautions.map((card) => (
                 <ClaimCard
                   key={card.id} card={card} hole={hole} holes={holes}
-                  left={Math.max(0, remaining[card.id] ?? 0)}
-                  mine={spendsFor(card.id, myUses)}
+                  left={remaining[card.id] === Infinity ? Infinity : Math.max(0, remaining[card.id] ?? 0)}
+                  mine={isLogged(card) ? grantsFor(card.id, myUses).filter((g) => (g.source || "manual") === "manual") : spendsFor(card.id, myUses)}
                   grants={grantsFor(card.id, myUses)}
                   busy={busy} onClaim={claim} onUndo={undo}
                   picked={picked[card.id] || ""}
@@ -144,7 +147,8 @@ function ClaimCard({ card, hole, holes, left, mine, grants = [], busy, onClaim, 
   const c = colorOf(card.color);
   const elig = eligibility(card, hole, holes);
   const opts = card.options || [];
-  const spent = left === 0;
+  const logged = isLogged(card);
+  const spent = !logged && left === 0;
   const blocked = !elig.ok;
   const needsChoice = opts.length > 0 && !picked;
   const disabled = spent || blocked || busy === card.id;
@@ -162,7 +166,7 @@ function ClaimCard({ card, hole, holes, left, mine, grants = [], busy, onClaim, 
           <div className="flex items-start justify-between gap-2">
             <p className="text-white font-bold leading-tight">{card.name}</p>
             <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${spent ? "bg-stone-700/70 text-amber-50/50" : c.chip}`}>
-              {spent ? "None left" : `${left} left`}
+              {logged ? `${grants.reduce((a, g) => a + (g.delta ?? 1), 0)}× recorded` : spent ? "None left" : `${left} left`}
             </span>
           </div>
 
@@ -179,7 +183,12 @@ function ClaimCard({ card, hole, holes, left, mine, grants = [], busy, onClaim, 
                 earned from scores
               </span>
             )}
-            {grants.length > 0 && (
+            {logged && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-400/15 text-rose-300">
+                mark when it happens
+              </span>
+            )}
+            {!logged && grants.length > 0 && (
               <span className="text-[10px] text-lime-300/80 bg-emerald-950/50 px-2 py-0.5 rounded-full">
                 +{grants.reduce((a, g) => a + (g.delta ?? 1), 0)} earned
               </span>
@@ -232,6 +241,7 @@ function ClaimCard({ card, hole, holes, left, mine, grants = [], busy, onClaim, 
               : spent ? <span className="flex items-center justify-center gap-1.5"><Check className="w-4 h-4" /> None left</span>
               : blocked ? elig.reason
               : needsChoice ? "Pick an option above"
+              : logged ? `Mark on hole ${hole}`
               : `Use on hole ${hole}`}
           </button>
         </div>
