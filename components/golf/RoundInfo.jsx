@@ -145,9 +145,17 @@ export default function RoundInfo({ round, state, myTeamId, onShowRules }) {
 }
 
 function Inventory({ round, state, myTeamId }) {
-  const cards = (state?.power_ups || round?.power_ups || []).filter((c) => c.enabled !== false);
+  const all = (state?.power_ups || round?.power_ups || []).filter((c) => c.enabled !== false);
   const myTeam = (state?.teams || []).find((t) => t.id === myTeamId);
   const uses = myTeam?.power_up_uses || [];
+
+  // This panel answers one question: what can we still play right now?
+  // Penalties and spent cards belong in the full Inventory tab, not here.
+  const cards = all.filter((c) => {
+    if (c.kind === "hazard") return false;
+    if (isLogged(c) && !c.score_effect) return false;  // pure trackers, nothing to spend
+    return remainingFor(c, uses) > 0 || (isLogged(c) && receivedCount(c, uses) > 0);
+  });
 
   if (cards.length === 0) return null;
 
@@ -158,7 +166,7 @@ function Inventory({ round, state, myTeamId }) {
       <h2 className="text-white font-bold flex items-center gap-2">
         <Zap className="w-4 h-4 text-lime-300" /> Your Inventory
       </h2>
-      <p className="text-amber-50/55 text-xs mt-0.5 mb-3">What your team has left to play.</p>
+      <p className="text-amber-50/55 text-xs mt-0.5 mb-3">Ready to play. Full history is on the Inventory tab.</p>
 
       <div className="space-y-2">
         {cards.map((card) => {
@@ -193,7 +201,12 @@ function Inventory({ round, state, myTeamId }) {
                   <p className="text-amber-50/45 text-[11px]">
                     {ruleLabel(card)}
                     {isAutoAwarded(card) && <span className="text-lime-300/70"> · auto</span>}
-                    {logged && <span className="text-rose-300/70"> · penalty</span>}
+                    {hazard && <span className="text-rose-300/70"> · penalty</span>}
+                    {!!card.score_effect && (
+                      <span className={card.score_effect < 0 ? "text-lime-300/80" : "text-rose-300/70"}>
+                        {" · "}{card.score_effect > 0 ? "+" : ""}{card.score_effect} stroke
+                      </span>
+                    )}
                   </p>
                 </div>
 

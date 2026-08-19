@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ShoppingBag, BookOpen, Home, ArrowLeftRight } from "lucide-react";
+import { ShoppingBag, BookOpen, Home, ArrowLeftRight, Flag } from "lucide-react";
 
 const NAV = [
   { href: "/golf", label: "Home", icon: Home, exact: true },
+  { href: "/golf/rounds", label: "Play", icon: Flag },
   { href: "/golf/shop", label: "Shop", icon: ShoppingBag },
   { href: "/golf/games", label: "Games", icon: BookOpen },
 ];
@@ -50,7 +51,7 @@ export default function GolfLayout({ children }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center gap-0.5 px-5 py-1.5 rounded-xl transition ${
+                className={`flex flex-col items-center gap-0.5 px-3.5 py-1.5 rounded-xl transition ${
                   active
                     ? "text-lime-300 bg-lime-300/10 ring-1 ring-lime-300/25"
                     : "text-amber-50/60 hover:text-amber-50"

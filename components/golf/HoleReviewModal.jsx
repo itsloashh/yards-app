@@ -13,7 +13,7 @@ import { colorOf, canSelect, remainingFor, receivedCount, isLogged } from "@/lib
  */
 export default function HoleReviewModal({
   hole, tag, cards = [], ledger = [], holes = [], granted = [],
-  strokes = 0, penalties = 0, wonChallenge = false, onDone, onSkip,
+  strokes = 0, penalties = 0, wonChallenge = false, localHandlers = null, onDone, onSkip,
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -94,10 +94,18 @@ export default function HoleReviewModal({
     }
 
     setBusy(true);
-    const res = await setHolePowerUps(tag, hole, selections);
+
+    // Local rounds write straight to storage; tournament rounds go through the
+    // database functions. Same validation either way.
+    const res = localHandlers
+      ? localHandlers.setCards(selections)
+      : await setHolePowerUps(tag, hole, selections);
+
     if (res.ok && holeInfo?.challenge) {
-      await setChallengeWin(tag, hole, wonChal);
+      if (localHandlers) localHandlers.setChallenge(wonChal);
+      else await setChallengeWin(tag, hole, wonChal);
     }
+
     setBusy(false);
     if (!res.ok) { setError(res.error || "Could not save"); return; }
     onDone?.();

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { ShoppingBag, BookOpen, Flag, ChevronRight, Trophy } from "lucide-react";
+import { ShoppingBag, BookOpen, Flag, ChevronRight, Trophy, Play } from "lucide-react";
 import { useGolfProducts, useGolfGames, money } from "@/lib/golf";
 
 export default function GolfHome() {
@@ -36,6 +36,19 @@ export default function GolfHome() {
             <div className="flex-1">
               <h2 className="text-white font-bold text-lg">The Shop</h2>
               <p className="text-amber-50/80 text-xs">Apparel, gear &amp; accessories</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-lime-200/80" />
+          </div>
+        </Link>
+
+        <Link href="/golf/rounds" className="block rounded-2xl overflow-hidden golf-card-raised active:scale-[0.99] transition">
+          <div className="px-5 py-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-lime-300 flex items-center justify-center shrink-0 shadow">
+              <Play className="w-6 h-6" style={{ color: "#065f46" }} />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-white font-bold text-lg">Play a Round</h2>
+              <p className="text-amber-50/80 text-xs">Our games with your group &mdash; scores, rules &amp; power-ups</p>
             </div>
             <ChevronRight className="w-5 h-5 text-lime-200/80" />
           </div>
