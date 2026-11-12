@@ -5,6 +5,7 @@ import { Search, MapPin, ChevronDown, Check, Filter, X, RefreshCw, AlertCircle, 
 import { useApp } from "@/lib/AppContext";
 import { DIST_VALUES, CATEGORIES } from "@/lib/constants";
 import { distLabel } from "@/lib/distance";
+import { WHEN_OPTIONS } from "@/lib/saleFilters";
 
 function YardLogo({ onClick }) {
   return (
@@ -24,13 +25,14 @@ function YardLogo({ onClick }) {
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, profile, loc, locName, locErr, locLoading, requestLocation, dist, setDist, unit, setUnit, setShowAuth } = useApp();
-  const [query, setQuery] = useState("");
+  const {
+    user, profile, loc, locName, locErr, locLoading, requestLocation, dist, setDist, unit, setUnit, setShowAuth,
+    search: query, setSearch: setQuery, category: catFilter, setCategory: setCatFilter, when, setWhen,
+  } = useApp();
   const [distOpen, setDistOpen] = useState(false);
   const [catOpen, setCatOpen] = useState(false);
-  const [catFilter, setCatFilter] = useState(null);
 
-  const isDetail = pathname.startsWith("/sale/");
+  const isDetail = pathname.startsWith("/sale/") || pathname.startsWith("/reset-password");
 
   return (
     <header className="relative px-4 pt-12 pb-4 z-[100] shrink-0" style={{ background: "linear-gradient(135deg, #065f46 0%, #059669 40%, #84cc16 100%)" }}>
@@ -68,8 +70,16 @@ export default function Header() {
           <>
             <div className="relative mb-2.5">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-yard-600" />
-              <input type="text" placeholder="Search yard sales near you…" value={query} onChange={(e) => setQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white shadow-lg text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-lime-400 text-sm font-body" />
+              <input type="search" inputMode="search" enterKeyHint="search" aria-label="Search sales"
+                placeholder="Search yard sales near you…" value={query} onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                className="w-full pl-10 pr-10 py-3 rounded-2xl bg-white shadow-lg text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-lime-400 text-sm font-body" />
+              {query && (
+                <button onClick={() => setQuery("")} aria-label="Clear search"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-stone-400 hover:text-stone-600">
+                  <X className="w-[18px] h-[18px]" />
+                </button>
+              )}
             </div>
 
             {/* Filter row */}
@@ -90,7 +100,7 @@ export default function Header() {
               </button>
 
               {catFilter && (
-                <button onClick={() => setCatFilter(null)} className="px-2 py-1 bg-white/20 rounded-full">
+                <button onClick={() => setCatFilter(null)} aria-label="Clear category" className="w-8 h-8 flex items-center justify-center bg-white/20 rounded-full">
                   <X className="w-3.5 h-3.5 text-white" />
                 </button>
               )}
@@ -134,6 +144,16 @@ export default function Header() {
                   ))}
                 </div>
               </>}
+            </div>
+
+            {/* Quick "when" filters — tap one to turn it on, tap again to turn it off */}
+            <div className="flex items-center gap-2 mt-2.5 -mx-4 px-4 overflow-x-auto no-scrollbar">
+              {WHEN_OPTIONS.map((o) => (
+                <button key={o.id} onClick={() => setWhen(when === o.id ? null : o.id)} aria-pressed={when === o.id}
+                  className={`shrink-0 px-3 py-[6px] rounded-full text-[12px] font-semibold whitespace-nowrap transition ${when === o.id ? "bg-white text-yard-700 shadow" : "bg-white/15 text-white hover:bg-white/25"}`}>
+                  {o.label}
+                </button>
+              ))}
             </div>
           </>
         )}

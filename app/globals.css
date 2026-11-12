@@ -17,6 +17,15 @@ body {
   user-select: none;
 }
 
+/* Text people need to copy (addresses, descriptions) can be selected */
+.selectable { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+
+/* On phones, form fields use 16px text so iOS Safari doesn't zoom the whole
+   page in when you tap one. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select { font-size: 16px !important; }
+}
+
 /* Safe area for iOS notch */
 @supports (padding: env(safe-area-inset-top)) {
   .safe-top { padding-top: env(safe-area-inset-top); }
@@ -25,7 +34,15 @@ body {
 
 /* Leaflet overrides */
 .leaflet-container { width: 100%; height: 100%; font-family: inherit; }
-.leaflet-control-attribution { display: none !important; }
+.leaflet-control-attribution { font-size: 9px !important; padding: 0 5px !important; background: rgba(255,255,255,0.75) !important; color: #57534e !important; border-radius: 6px 0 0 0; }
+.leaflet-control-attribution a { color: #57534e !important; }
+/* Numbered bubble shown when several pins are close together */
+.sale-cluster {
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 9999px; color: #fff; font-weight: 800; font-size: 14px;
+  background: linear-gradient(135deg, #059669, #84cc16);
+  border: 3px solid #fff; box-shadow: 0 3px 12px rgba(0,0,0,0.28);
+}
 .leaflet-control-zoom { border: none !important; box-shadow: 0 2px 12px rgba(0,0,0,0.15) !important; border-radius: 12px !important; overflow: hidden; }
 .leaflet-control-zoom a { width: 36px !important; height: 36px !important; line-height: 36px !important; font-size: 18px !important; color: #374151 !important; }
 .leaflet-popup-content-wrapper { border-radius: 16px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important; padding: 0 !important; }

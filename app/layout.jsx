@@ -29,7 +29,7 @@ export const metadata = {
   description: "Find and post yard sales near you on Yard$, the live yard sale marketplace. Discover garage sales, estate sales, and rummage sales with addresses, photos, and directions.",
   manifest: "/manifest.json",
   themeColor: "#059669",
-  viewport: "width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no",
+  viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
   alternates: { canonical: "https://shopyards.ca" },
   appleWebApp: {
     capable: true,

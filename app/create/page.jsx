@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Camera, X, MapPin, RefreshCw, Crosshair, Star, ChevronDown, AlertCircle, Loader2, CalendarX2, Check } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
+import { localDateStr } from "@/lib/saleFilters";
 import { CATEGORIES } from "@/lib/constants";
 import { SALE_TYPES } from "@/lib/saleTypes";
 import { reverseGeocode, geocodeAddress } from "@/lib/geocode";
@@ -322,7 +323,7 @@ function CreatePageInner() {
         <div>
           <label className="block font-medium text-stone-800 mb-1.5">Start Date <span className="text-rose-500">*</span></label>
           <input type="date" value={form.date} onChange={e => set("date", e.target.value)}
-            min={new Date().toISOString().split("T")[0]}
+            min={localDateStr()}
             className={`w-full px-3 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm ${errors.date ? "border-rose-300 bg-rose-50" : "border-stone-200"}`} />
           {errors.date && <p className="text-rose-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.date}</p>}
         </div>
@@ -338,7 +339,7 @@ function CreatePageInner() {
         <div>
           <label className="block font-medium text-stone-800 mb-1.5">End Date <span className="text-stone-400 text-xs font-normal">(optional)</span></label>
           <input type="date" value={form.endDate} onChange={e => set("endDate", e.target.value)}
-            min={form.date || new Date().toISOString().split("T")[0]}
+            min={form.date || localDateStr()}
             placeholder="Same day"
             className={`w-full px-3 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm ${errors.endDate ? "border-rose-300 bg-rose-50" : "border-stone-200"}`} />
           {errors.endDate && <p className="text-rose-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.endDate}</p>}

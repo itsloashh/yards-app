@@ -1,5 +1,47 @@
 # Yard$ changelog
 
+## v1.19.0 — Speed and feel
+
+**Faster**
+- Live updates now change just the one sale that changed. Before, every change to any sale (even a view count) made every open phone re-download the whole list and re-drop every map pin.
+- Sale pages load their own sale directly, so a shared link opens without waiting for the full list, never flashes "Sale Not Found", and sales older than 30 days still open.
+- The splash and the Yard$ / Yard$ Golf chooser play once per visit, on the home screen only. Shared links and moving around the app skip them.
+- Golf, admin and city landing pages no longer load the sale list, live updates or GPS in the background (so no location prompt on a page from Google).
+- The list refreshes itself when the app comes back to the front after being asleep or offline.
+
+**Search and filters (now working)**
+- The search box searches titles, descriptions, addresses, categories and featured items.
+- The category filter filters.
+- New quick filters: Open now, Today, This weekend, Ending soon (closing within 2 hours).
+- All of these apply to the map as well as the list.
+- A "No Matches" screen with a one-tap "Clear search & filters".
+
+**Map**
+- The map is built once and updated in place instead of being rebuilt on every location refresh.
+- Pins close together merge into a numbered bubble; tap it to zoom in. Featured (boosted) pins always stay visible on their own.
+- Only new pins drop in; existing pins stay put.
+- The radius circle is now the right size in kilometres, and hidden for "Anywhere".
+- The map fits its space exactly, so the "sales nearby" label is no longer pushed off-screen.
+- OpenStreetMap credit restored (their licence requires it).
+
+**Fixes**
+- Kilometres: "10 km" now means 10 km (it was filtering about 16 km).
+- Posting after 7 pm: you can pick today as the start date again.
+- iPhone no longer zooms the page when you tap a form field (fields use 16px text on phones).
+- Pinch-to-zoom is allowed again.
+- Addresses and descriptions on a sale page can be selected and copied.
+- Directions on iPhone, iPad and Mac open Apple Maps.
+- Removed the "[debug]" error text from the connection banner.
+- A sale page that can't load on bad signal says so and offers "Try again".
+
+**Account**
+- "Forgot password?" on the sign-in screen, plus a `/reset-password` page for the email link.
+
+**Setup**
+- No database changes.
+- Supabase: add `https://shopyards.ca/reset-password` under Authentication → URL Configuration → Redirect URLs.
+- One new free library: `leaflet.markercluster` (pin grouping).
+
 ## v1.18.1 — Deploy fix
 
 - The v1.18.0 deploy failed on Vercel while downloading fonts from Google (Google changed its font file links, which this version of Next.js can't read). Nothing in the app was at fault, but no new version could go live.

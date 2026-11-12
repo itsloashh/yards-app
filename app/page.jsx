@@ -1,33 +1,21 @@
 "use client";
 import { WifiOff } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
-import { haversine, fmtDist, distLabel } from "@/lib/distance";
+import { distLabel } from "@/lib/distance";
+import { useFilteredSales } from "@/lib/useFilteredSales";
 import { isBoosted } from "@/lib/boostPackages";
 import SaleCard from "@/components/SaleCard";
 import PromoBanner from "@/components/PromoBanner";
 
 export default function HomePage() {
-  const { activeSales, upcomingSales, loc, dist, unit, sortBy, setSortBy, authLoading, salesLoading, sales, connOk, salesLoadError } = useApp();
+  const { dist, unit, sortBy, setSortBy, authLoading, salesLoading, sales, connOk, setSearch, setCategory, setWhen } = useApp();
+  const { active, upcoming, inRange, filtersOn } = useFilteredSales();
 
-  const useKm = unit === "km";
   const showAll = !isFinite(dist); // "Anywhere" selected
+  const clearFilters = () => { setSearch(""); setCategory(null); setWhen(null); };
 
-  const addDist = (list) => list.map(s => {
-    if (!loc || !s.coords || typeof s.coords.lat !== "number" || typeof s.coords.lng !== "number") {
-      return { ...s, distance: showAll ? 0 : Infinity, distanceText: loc ? "—" : "…" };
-    }
-    const d = haversine(loc.lat, loc.lng, s.coords.lat, s.coords.lng, useKm);
-    // Guard against NaN from bad coordinates
-    const safeD = isFinite(d) ? d : (showAll ? 0 : Infinity);
-    return { ...s, distance: safeD, distanceText: isFinite(d) ? fmtDist(d, unit) : "—" };
-  });
-
-  const distInUnit = useKm ? dist * 1.60934 : dist;
-  // When "Anywhere" is selected, show every sale regardless of distance (even ones with unknown coords)
-  const filterByDist = (list) => showAll ? list : list.filter(s => s.distance <= distInUnit);
-
-  let activeFiltered = filterByDist(addDist(activeSales));
-  let upcomingFiltered = filterByDist(addDist(upcomingSales));
+  let activeFiltered = [...active];
+  let upcomingFiltered = [...upcoming];
 
   if (sortBy === "newest") activeFiltered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   else if (sortBy === "ending") activeFiltered.sort((a, b) => (a.expiresAt || Infinity) - (b.expiresAt || Infinity));
@@ -53,9 +41,6 @@ export default function HomePage() {
         <div className="flex-1 min-w-0">
           <p className="text-amber-800 text-xs font-semibold">We're having trouble loading sales</p>
           <p className="text-amber-600 text-[11px] mt-0.5">Please try again in a moment — we'll keep retrying.</p>
-          {salesLoadError && (
-            <p className="text-red-700 text-[10px] mt-1 font-mono break-all">[debug] {salesLoadError}</p>
-          )}
         </div>
       </div>
     ) : null
@@ -75,6 +60,30 @@ export default function HomePage() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Sales exist in range, but the search / category / quick filter hides them all
+  if (!totalVisible && filtersOn && inRange > 0) {
+    return (
+      <div>
+        <ConnectionBanner />
+        <div className="flex flex-col items-center justify-center p-10 text-center" style={{ minHeight: "50vh" }}>
+          <div className="w-24 h-24 bg-gradient-to-br from-emerald-100 to-lime-100 rounded-full flex items-center justify-center mb-5">
+            <span className="text-4xl" aria-hidden="true">🔎</span>
+          </div>
+          <h3 className="text-xl font-bold text-stone-800 mb-2 font-display">No Matches</h3>
+          <p className="text-stone-500 text-sm mb-5 max-w-[260px]">
+            Nothing nearby matches your search and filters right now.
+          </p>
+          <button onClick={clearFilters}
+            className="px-6 py-3 text-white font-bold rounded-xl shadow-lg text-sm"
+            style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>
+            Clear search &amp; filters
+          </button>
+          <p className="mt-4 text-xs text-stone-400">{inRange} sale{inRange !== 1 ? "s" : ""} in your {distLabel(dist, unit)} range</p>
         </div>
       </div>
     );

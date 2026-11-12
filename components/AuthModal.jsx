@@ -5,7 +5,7 @@ import { useApp } from "@/lib/AppContext";
 import LocationAutocomplete from "./LocationAutocomplete";
 
 export default function AuthModal() {
-  const { showAuth, setShowAuth, authMode, setAuthMode, handleSignUp, handleLogin } = useApp();
+  const { showAuth, setShowAuth, authMode, setAuthMode, handleSignUp, handleLogin, requestPasswordReset } = useApp();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -17,12 +17,29 @@ export default function AuthModal() {
   const [loading, setLoading] = useState(false);
   const [confirmSent, setConfirmSent] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState("");
+  // Forgot-password flow: null | "form" | "sent"
+  const [resetStep, setResetStep] = useState(null);
 
   if (!showAuth) return null;
 
   const clearForm = () => {
     setErrs({}); setGlobalErr(""); setName(""); setEmail(""); setPw(""); setPw2(""); setLocation(null);
-    setConfirmSent(false); setConfirmEmail("");
+    setConfirmSent(false); setConfirmEmail(""); setResetStep(null);
+  };
+
+  const sendReset = async () => {
+    setGlobalErr("");
+    const addr = email.trim().toLowerCase();
+    if (!addr || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr)) {
+      setErrs({ email: "Enter the email you signed up with" });
+      return;
+    }
+    setErrs({});
+    setLoading(true);
+    const result = await requestPasswordReset(addr);
+    setLoading(false);
+    if (result.error) setGlobalErr(result.error);
+    else setResetStep("sent");
   };
 
   const closeAndReset = () => {
@@ -76,6 +93,64 @@ export default function AuthModal() {
       }
     }
   };
+
+  // Forgot password screens
+  if (resetStep) {
+    return (
+      <div className="absolute inset-0 bg-black/50 z-[300] flex items-end animate-fade-in">
+        <div className="bg-white w-full rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto animate-slide-up">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-2xl font-bold text-stone-800 font-display">
+              {resetStep === "sent" ? "Check Your Email" : "Reset Password"}
+            </h2>
+            <button onClick={closeAndReset} aria-label="Close" className="p-2 hover:bg-stone-100 rounded-full">
+              <X className="w-6 h-6 text-stone-500" />
+            </button>
+          </div>
+
+          {resetStep === "sent" ? (
+            <>
+              <div className="flex flex-col items-center text-center py-4">
+                <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4" style={{ background: "linear-gradient(135deg, #ecfdf5, #d1fae5)" }}>
+                  <MailCheck className="w-10 h-10 text-emerald-600" />
+                </div>
+                <p className="text-stone-600 text-sm mb-1">If there&apos;s an account for</p>
+                <p className="text-emerald-700 font-semibold text-sm mb-3 break-all">{email.trim().toLowerCase()}</p>
+                <p className="text-stone-500 text-xs max-w-[280px] leading-relaxed">
+                  we&apos;ve sent a link to set a new password. Open it on this device. Check your spam folder if it doesn&apos;t arrive in a few minutes.
+                </p>
+              </div>
+              <button onClick={() => { setResetStep(null); setPw(""); setGlobalErr(""); }}
+                className="w-full mt-4 py-3.5 text-white font-bold rounded-xl shadow-lg text-sm"
+                style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>
+                Back to Sign In
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-stone-500 text-sm mb-4">Enter your email and we&apos;ll send you a link to set a new password.</p>
+              {globalErr && (
+                <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2 text-rose-700 text-sm">
+                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" /><span>{globalErr}</span>
+                </div>
+              )}
+              <Field icon={Mail} label="Email" type="email" value={email} onChange={setEmail} err={errs.email} placeholder="you@example.com" />
+              <button onClick={sendReset} disabled={loading}
+                className="w-full mt-4 py-4 text-white font-bold rounded-xl shadow-lg text-sm flex items-center justify-center gap-2 disabled:opacity-70"
+                style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>
+                {loading && <Loader2 className="w-5 h-5 animate-spin" />}
+                {loading ? "Please wait…" : "Send reset link"}
+              </button>
+              <button onClick={() => { setResetStep(null); setGlobalErr(""); setErrs({}); }}
+                className="w-full mt-2 py-2.5 text-stone-500 font-medium text-sm hover:text-stone-700 transition">
+                Back to Sign In
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // Confirmation sent screen
   if (confirmSent) {
@@ -170,6 +245,15 @@ export default function AuthModal() {
                 <p className="text-stone-400 text-[11px] mt-1.5">Where do you yard sale most? Helps us grow in your area.</p>
               </div>
             </>
+          )}
+
+          {authMode === "login" && (
+            <div className="text-right -mt-1">
+              <button type="button" onClick={() => { setResetStep("form"); setGlobalErr(""); setErrs({}); }}
+                className="text-emerald-600 text-sm font-semibold hover:underline py-1">
+                Forgot password?
+              </button>
+            </div>
           )}
 
           <button onClick={submit} disabled={loading}

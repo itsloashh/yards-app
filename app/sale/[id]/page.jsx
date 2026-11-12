@@ -12,6 +12,7 @@ import ReportModal from "@/components/ReportModal";
 import ReviewsModal from "@/components/ReviewsModal";
 import Avatar from "@/components/Avatar";
 import { getSaleType } from "@/lib/saleTypes";
+import { isAppleDevice } from "@/lib/routePlanner";
 
 export default function SaleDetailPage() {
   return (
@@ -25,7 +26,7 @@ function SaleDetailInner() {
   const router = useRouter();
   const { id } = useParams();
   const searchParams = useSearchParams();
-  const { sales, loc, unit, toggleSaved, isSaved, user, handleDeleteSale, incrementSaleViews, profile, loadSales } = useApp();
+  const { sales, loc, unit, toggleSaved, isSaved, user, handleDeleteSale, incrementSaleViews, profile, loadSales, loadSaleById } = useApp();
   const [photo, setPhoto] = useState(0);
   const [showContact, setShowContact] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -50,6 +51,23 @@ function SaleDetailInner() {
 
   const sale = sales.find(s => s.id === id || s.id === parseInt(id));
 
+  // Load this one sale directly, so a shared link opens right away instead of
+  // waiting for the whole list (and so sales older than 30 days still open).
+  // "loading" | "found" | "missing" | "error"
+  const [lookup, setLookup] = useState("loading");
+  const [lookupTry, setLookupTry] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    setLookup("loading");
+    loadSaleById(id)
+      .then((found) => { if (!cancelled) setLookup(found ? "found" : "missing"); })
+      .catch((err) => {
+        console.error("[sale] could not load:", err);
+        if (!cancelled) setLookup("error");
+      });
+    return () => { cancelled = true; };
+  }, [id, lookupTry, loadSaleById]);
+
   // Track a view once per page visit (skips owner's own views, handled in the context)
   useEffect(() => {
     if (sale && !viewTracked.current) {
@@ -57,6 +75,28 @@ function SaleDetailInner() {
       incrementSaleViews(sale.id, sale);
     }
   }, [sale]);
+
+  if (!sale && lookup === "loading") {
+    return (
+      <div className="flex items-center justify-center" style={{ minHeight: "50vh" }} role="status" aria-label="Loading sale">
+        <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!sale && lookup === "error") {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center" style={{ minHeight: "50vh" }}>
+        <h3 className="text-lg font-bold text-stone-800 mb-2 font-display">Couldn&apos;t Load This Sale</h3>
+        <p className="text-stone-500 text-sm mb-4">Check your connection and try again.</p>
+        <button onClick={() => setLookupTry(n => n + 1)}
+          className="px-6 py-3 text-white font-bold rounded-xl shadow-lg text-sm"
+          style={{ background: "linear-gradient(135deg, #059669, #84cc16)" }}>
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   if (!sale) {
     return (
@@ -86,6 +126,11 @@ function SaleDetailInner() {
 
   const openDirections = () => {
     const dest = `${sale.coords.lat},${sale.coords.lng}`;
+    // iPhone / iPad / Mac: Apple Maps, starting from where you are right now
+    if (isAppleDevice()) {
+      window.open(`https://maps.apple.com/?daddr=${encodeURIComponent(dest)}&dirflg=d`, "_blank");
+      return;
+    }
     const orig = loc ? `${loc.lat},${loc.lng}` : "";
     window.open(`https://www.google.com/maps/dir/${orig}/${dest}`, "_blank");
   };
@@ -247,7 +292,7 @@ function SaleDetailInner() {
           {sale.address && (
             <div className="flex items-center gap-1.5 text-stone-600 mt-2 text-sm">
               <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
-              <span>{sale.address}</span>
+              <span className="selectable">{sale.address}</span>
             </div>
           )}
           <div className="flex items-center gap-1.5 text-emerald-600 font-medium mt-1.5 text-sm">
@@ -261,7 +306,7 @@ function SaleDetailInner() {
 
         <div>
           <h2 className="font-bold text-stone-800 mb-1.5 font-display">About This Sale</h2>
-          <p className="text-stone-600 text-sm leading-relaxed">{sale.description}</p>
+          <p className="text-stone-600 text-sm leading-relaxed selectable">{sale.description}</p>
         </div>
 
         {/* Share — available to everyone */}

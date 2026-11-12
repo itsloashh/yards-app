@@ -1,14 +1,28 @@
 "use client";
 import { useEffect, useState } from "react";
 
-export default function SplashScreen() {
+const SEEN_KEY = "yards_splash_seen";
+
+// True if the splash should play: only on the home screen, and only the first
+// time in a browsing session. Deep links (a shared sale, the map) skip it.
+export function shouldShowSplash(pathname) {
+  if (pathname !== "/") return false;
+  try {
+    return sessionStorage.getItem(SEEN_KEY) !== "1";
+  } catch {
+    return true;
+  }
+}
+
+export default function SplashScreen({ onDone }) {
   const [visible, setVisible] = useState(true);
   const [fadingOut, setFadingOut] = useState(false);
 
   useEffect(() => {
+    try { sessionStorage.setItem(SEEN_KEY, "1"); } catch {}
     // Start fade-out after 1.6s, fully hide at 2.0s
     const fadeTimer = setTimeout(() => setFadingOut(true), 1600);
-    const hideTimer = setTimeout(() => setVisible(false), 2000);
+    const hideTimer = setTimeout(() => { setVisible(false); if (onDone) onDone(); }, 2000);
     return () => {
       clearTimeout(fadeTimer);
       clearTimeout(hideTimer);
