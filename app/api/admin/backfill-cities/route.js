@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getRequestUser, isAdminUser } from "@/lib/serverAuth";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -22,9 +23,18 @@ async function reverseCity(lat, lng) {
   }
 }
 
-export async function POST() {
+export async function POST(req) {
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Not configured" }, { status: 503 });
+  }
+
+  // Admins only — checked on the server from the caller's login token.
+  const user = await getRequestUser(req);
+  if (!user) {
+    return NextResponse.json({ error: "Please sign in." }, { status: 401 });
+  }
+  if (!(await isAdminUser(user.id))) {
+    return NextResponse.json({ error: "Admins only." }, { status: 403 });
   }
   try {
     // Fetch sales and filter for missing city in JS — more reliable than

@@ -252,7 +252,7 @@ function CreatePageInner() {
         <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotos} />
       </div>
 
-      <FormField label="Title" required value={form.title} onChange={v => set("title", v)} error={errors.title} placeholder="e.g., Moving Sale — Everything Must Go!" />
+      <FormField label="Title" required value={form.title} onChange={v => set("title", v)} error={errors.title} placeholder="e.g., Moving Sale — Everything Must Go!" maxLength={150} />
 
       {/* Sale Type */}
       <div>
@@ -282,7 +282,7 @@ function CreatePageInner() {
 
       <div>
         <label className="block font-medium text-stone-800 mb-1.5">Description <span className="text-rose-500">*</span></label>
-        <textarea placeholder="Describe what you're selling…" rows={3} value={form.description}
+        <textarea placeholder="Describe what you're selling…" rows={3} maxLength={5000} value={form.description}
           onChange={e => set("description", e.target.value)}
           className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none text-sm ${errors.description ? "border-rose-300 bg-rose-50" : "border-stone-200"}`} />
         {errors.description && <p className="text-rose-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.description}</p>}
@@ -293,7 +293,7 @@ function CreatePageInner() {
         <label className="block font-medium text-stone-800 mb-1.5">Address <span className="text-rose-500">*</span></label>
         <div className="relative">
           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
-          <input type="text" placeholder="Enter your address" value={form.address}
+          <input type="text" maxLength={300} placeholder="Enter your address" value={form.address}
             onChange={handleAddressChange}
             className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm ${errors.address ? "border-rose-300 bg-rose-50" : "border-stone-200"}`} />
         </div>
@@ -427,11 +427,11 @@ function CreatePageInner() {
   );
 }
 
-function FormField({ label, required, value, onChange, error, placeholder }) {
+function FormField({ label, required, value, onChange, error, placeholder, maxLength }) {
   return (
     <div>
       <label className="block font-medium text-stone-800 mb-1.5">{label} {required && <span className="text-rose-500">*</span>}</label>
-      <input type="text" placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)}
+      <input type="text" placeholder={placeholder} value={value} maxLength={maxLength} onChange={e => onChange(e.target.value)}
         className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm ${error ? "border-rose-300 bg-rose-50" : "border-stone-200"}`} />
       {error && <p className="text-rose-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{error}</p>}
     </div>

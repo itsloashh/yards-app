@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { X, Rocket, Check, Loader2, Sparkles, TrendingUp, MapPin, Star } from "lucide-react";
 import { BOOST_LIST } from "@/lib/boostPackages";
+import { supabase } from "@/lib/supabase";
 
 export default function BoostModal({ sale, user, onClose }) {
   const [selected, setSelected] = useState("weekend");
@@ -12,10 +13,20 @@ export default function BoostModal({ sale, user, onClose }) {
     setLoading(true);
     setError("");
     try {
+      // Prove who we are with the login token — the server no longer trusts a user id from the page
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setError("Please sign in again to boost your sale.");
+        setLoading(false);
+        return;
+      }
       const res = await fetch("/api/stripe/create-checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ saleId: sale.id, packageId: selected, userId: user.id }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ saleId: sale.id, packageId: selected }),
       });
       const data = await res.json();
       if (!res.ok) {

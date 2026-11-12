@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { RefreshCw, AlertCircle, X, ChevronLeft } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { pinSvgForType } from "@/lib/saleTypes";
+import { escapeHtml } from "@/lib/safeHtml";
 
 export default function MapView({ sales }) {
   const router = useRouter();
@@ -137,11 +138,11 @@ export default function MapView({ sales }) {
 
       const popup = `<div style="padding:12px;min-width:180px;font-family:inherit;">
         ${badgeHtml}
-        <div style="font-weight:700;font-size:13px;color:#1c1917;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;">${sale.title}</div>
-        ${sale.address ? `<div style="font-size:11px;color:#059669;margin-bottom:2px;">📍 ${sale.address}</div>` : ""}
-        <div style="font-size:11px;color:#059669;font-weight:600;">${sale.distanceText || ""} · ${sale.date}</div>
+        <div style="font-weight:700;font-size:13px;color:#1c1917;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;">${escapeHtml(sale.title)}</div>
+        ${sale.address ? `<div style="font-size:11px;color:#059669;margin-bottom:2px;">📍 ${escapeHtml(sale.address)}</div>` : ""}
+        <div style="font-size:11px;color:#059669;font-weight:600;">${escapeHtml(sale.distanceText || "")} · ${escapeHtml(sale.date)}</div>
         <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">
-          ${(sale.tags || []).slice(0, 3).map(t => `<span style="padding:2px 8px;background:#f5f5f4;border-radius:99px;font-size:10px;color:#57534e;">${t}</span>`).join("")}
+          ${(sale.tags || []).slice(0, 3).map(t => `<span style="padding:2px 8px;background:#f5f5f4;border-radius:99px;font-size:10px;color:#57534e;">${escapeHtml(t)}</span>`).join("")}
         </div>
       </div>`;
 

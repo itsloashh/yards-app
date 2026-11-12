@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { safeJsonLd } from "@/lib/safeHtml";
 import { notFound } from "next/navigation";
 import { getSalesByCitySlug, getActiveCities, citySlug, titleCaseCity } from "@/lib/seoData";
 
@@ -78,7 +79,7 @@ export default async function CityPage({ params }) {
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 20px 64px", fontFamily: "system-ui, -apple-system, sans-serif", color: "#1c1917" }}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
 
       {/* Header */}
       <nav style={{ marginBottom: 24 }}>

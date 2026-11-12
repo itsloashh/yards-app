@@ -1,4 +1,5 @@
 import { getSaleById } from "@/lib/seoData";
+import { safeJsonLd } from "@/lib/safeHtml";
 
 // Server component layout — injects real per-sale metadata + JSON-LD into the
 // HTML head so crawlers and social shares see proper titles/descriptions, even
@@ -58,7 +59,7 @@ export default async function SaleLayout({ children, params }) {
 
   return (
     <>
-      {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
+      {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />}
       {children}
     </>
   );

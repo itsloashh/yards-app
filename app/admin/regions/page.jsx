@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Loader2, BarChart3, Globe2, Users, Tag, MapPin, RefreshCw } from "lucide-react";
 import { useAdminUsers, computeRegionStats, computeCountryStats } from "@/lib/admin";
+import { supabase } from "@/lib/supabase";
 
 function BackfillCities() {
   const [running, setRunning] = useState(false);
@@ -11,7 +12,11 @@ function BackfillCities() {
     setRunning(true);
     setResult("");
     try {
-      const res = await fetch("/api/admin/backfill-cities", { method: "POST" });
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/admin/backfill-cities", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token || ""}` },
+      });
       const data = await res.json();
       setResult(data.message || (data.error ? `Error: ${data.error}` : "Done."));
     } catch {
