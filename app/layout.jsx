@@ -1,12 +1,27 @@
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
-import { Outfit, Fraunces } from "next/font/google";
+import localFont from "next/font/local";
 import { AppProvider } from "@/lib/AppContext";
 import { PostHogProvider } from "@/lib/posthog";
 import AppShell from "@/components/AppShell";
 
-const body = Outfit({ subsets: ["latin"], variable: "--font-body", weight: ["300", "400", "500", "600", "700", "800"] });
-const display = Fraunces({ subsets: ["latin"], variable: "--font-display", weight: ["700", "800", "900"] });
+// Fonts are bundled with the app (app/fonts) instead of being downloaded from
+// Google on every build. Same typefaces (Outfit + Fraunces), and a deploy can
+// no longer fail because Google Fonts changed something.
+const body = localFont({
+  src: "./fonts/outfit-latin-wght-normal.woff2",
+  variable: "--font-body",
+  weight: "100 900",
+  style: "normal",
+  display: "swap",
+});
+const display = localFont({
+  src: "./fonts/fraunces-latin-wght-normal.woff2",
+  variable: "--font-display",
+  weight: "100 900",
+  style: "normal",
+  display: "swap",
+});
 
 export const metadata = {
   metadataBase: new URL("https://shopyards.ca"),

@@ -1,5 +1,11 @@
 # Yard$ changelog
 
+## v1.18.1 — Deploy fix
+
+- The v1.18.0 deploy failed on Vercel while downloading fonts from Google (Google changed its font file links, which this version of Next.js can't read). Nothing in the app was at fault, but no new version could go live.
+- The two fonts (Outfit and Fraunces) are now bundled with the app in `app/fonts`, so builds no longer depend on Google. Same typefaces, same look.
+- No database changes.
+
 ## v1.18.0 — Security lockdown
 
 No feature changes. This release closes the holes found in the audit.
