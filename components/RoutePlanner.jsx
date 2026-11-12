@@ -1,12 +1,15 @@
 "use client";
 import { useState, useMemo } from "react";
 import { X, Map as RouteIcon, MapPin, Check, Navigation, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
+import { useApp } from "@/lib/AppContext";
 import { orderRoute, routeDistanceKm, googleMapsUrl, appleMapsUrl, isAppleDevice, MAX_ROUTE_STOPS } from "@/lib/routePlanner";
 
 export default function RoutePlanner({ savedSales, startLoc, unit, onClose }) {
   // Default: all saved sales selected
   const [selected, setSelected] = useState(() => new Set(savedSales.map((s) => s.id)));
   const appleFirst = isAppleDevice();
+  const { logSaleEvent } = useApp();
+  const countStops = (stops) => stops.forEach((s) => logSaleEvent(s.id, "route_add"));
 
   const toggle = (id) => {
     setSelected((prev) => {
@@ -35,11 +38,11 @@ export default function RoutePlanner({ savedSales, startLoc, unit, onClose }) {
 
   const openGoogle = () => {
     const url = googleMapsUrl(startLoc, ordered);
-    if (url) window.open(url, "_blank", "noopener,noreferrer");
+    if (url) { countStops(ordered); window.open(url, "_blank", "noopener,noreferrer"); }
   };
   const openApple = () => {
     const url = appleMapsUrl(startLoc, ordered);
-    if (url) window.open(url, "_blank", "noopener,noreferrer");
+    if (url) { countStops(ordered); window.open(url, "_blank", "noopener,noreferrer"); }
   };
 
   return (

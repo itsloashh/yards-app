@@ -1,5 +1,28 @@
 # Yard$ changelog
 
+## v1.20.0 — Seller tools and analytics
+
+**Posting a sale**
+- Draft autosave: an unfinished new listing is saved on the phone as you type. Close the app and come back and it's still there, with a "Start over" button.
+- Photos upload in the background the moment you pick them, so posting no longer waits on photos.
+- Photos are sharper: saved at up to 1400px (was 800px).
+- A photo that fails to upload shows "Retry" on that photo. Before, the sale posted without it and nobody was told.
+- The form scrolls to the problem when an address or a photo needs fixing.
+
+**Repost**
+- Past sales in My Sales have a "Repost" button. It opens a new listing with everything filled in (photos included) except the date.
+
+**Seller analytics (real counts only)**
+- My Sales shows, per sale: views, saves, direction taps, shares and route adds, plus totals across all your sales.
+- Each action counts once per person per day, and a seller's own taps never count.
+- When buyers have saved a sale that isn't boosted, a line under it says how many and suggests boosting.
+
+**Tidy-up**
+- The quick filter chips only show on the home feed and the map, so other screens get their space back.
+
+**Database**
+- `migrations/020_seller_analytics.sql` — run BEFORE pushing.
+
 ## v1.19.0 — Speed and feel
 
 **Faster**

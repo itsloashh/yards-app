@@ -1,13 +1,13 @@
 "use client";
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Camera, X, MapPin, RefreshCw, Crosshair, Star, ChevronDown, AlertCircle, Loader2, CalendarX2, Check } from "lucide-react";
+import { ChevronLeft, Camera, X, MapPin, RefreshCw, Crosshair, Star, ChevronDown, AlertCircle, Loader2, CalendarX2, Check, RotateCcw, FileClock } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { localDateStr } from "@/lib/saleFilters";
 import { CATEGORIES } from "@/lib/constants";
 import { SALE_TYPES } from "@/lib/saleTypes";
 import { reverseGeocode, geocodeAddress } from "@/lib/geocode";
-import { compressImage } from "@/lib/imageUtils";
+import { compressToBlob } from "@/lib/imageUtils";
 import { formatSaleDate } from "@/lib/timeFormat";
 
 export default function CreatePage() {
@@ -18,12 +18,27 @@ export default function CreatePage() {
   );
 }
 
+// Where an unfinished new listing is kept on this phone
+const DRAFT_KEY = "yards_sale_draft_v1";
+const DRAFT_MAX_AGE_MS = 14 * 86400000;
+const EMPTY_FORM = { title: "", description: "", address: "", date: "", endDate: "", startTime: "", endTime: "", categories: [], saleType: "yard" };
+const MAX_PHOTOS = 5;
+
 function CreatePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
-  const { user, loc, handleCreateSale, handleUpdateSale, setShowAuth, profile, sales } = useApp();
-  const [form, setForm] = useState({ title: "", description: "", address: "", date: "", endDate: "", startTime: "", endTime: "", categories: [], photos: [], saleType: "yard" });
+  const repostId = searchParams.get("repost"); // copy a past sale into a new listing
+  const sourceId = editId || repostId;
+  const { user, loc, handleCreateSale, handleUpdateSale, setShowAuth, profile, sales, uploadPhotoBlob, loadSaleById } = useApp();
+  const [form, setForm] = useState(EMPTY_FORM);
+  // Each photo: { key, src (what to show), url (once uploaded), status: "uploading" | "done" | "failed" }
+  const [photos, setPhotos] = useState([]);
+  const photosRef = useRef([]);
+  const blobsRef = useRef(new Map());   // key -> compressed photo, kept for "retry"
+  const uploadsRef = useRef(new Map()); // key -> upload in progress
+  const [draftRestored, setDraftRestored] = useState(false);
+  const draftReady = useRef(false);
   const [errors, setErrors] = useState({});
   const [geoLoading, setGeoLoading] = useState(false);
   const [photoLoading, setPhotoLoading] = useState(false);
@@ -41,30 +56,93 @@ function CreatePageInner() {
   const fileRef = useRef(null);
 
   const isEditMode = !!editId;
-  const editingSale = editId ? sales.find(s => s.id === editId) : null;
+  const isRepost = !editId && !!repostId;
+  const editingSale = sourceId ? sales.find(s => s.id === sourceId) : null;
 
-  // Pre-fill the form when editing an existing sale
+  useEffect(() => { photosRef.current = photos; }, [photos]);
+
+  // If the sale being edited / reposted isn't in the loaded list (e.g. it's older), fetch it
   useEffect(() => {
-    if (editId && editingSale && !editLoaded) {
+    if (sourceId && !editingSale) loadSaleById(sourceId).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceId]);
+
+  // Pre-fill the form when editing an existing sale, or reposting a past one
+  useEffect(() => {
+    if (sourceId && editingSale && !editLoaded) {
+      // Only the owner can edit or repost a sale
+      if (!user || editingSale.userId !== user.id) return;
       setForm({
         title: editingSale.title || "",
         description: editingSale.description || "",
         address: editingSale.address || "",
-        date: editingSale.dateRaw || "",
-        endDate: editingSale.endDateRaw || "",
+        // A repost is a NEW sale: everything carries over except the dates
+        date: isRepost ? "" : (editingSale.dateRaw || ""),
+        endDate: isRepost ? "" : (editingSale.endDateRaw || ""),
         startTime: editingSale.startTime || "",
         endTime: editingSale.endTime || "",
         categories: editingSale.tags || [],
-        photos: editingSale.photos || [],
         saleType: editingSale.saleType || "yard",
       });
+      setPhotos((editingSale.photos || []).slice(0, MAX_PHOTOS).map((url, i) => ({ key: `existing-${i}`, src: url, url, status: "done" })));
       setFeaturedItems(editingSale.featuredItems || []);
       // Existing sale already has coords — keep them unless user changes the address
       setStoredCurrentCoords(editingSale.coords);
       setCoordsSource("current");
       setEditLoaded(true);
     }
-  }, [editId, editingSale, editLoaded]);
+  }, [sourceId, editingSale, editLoaded, user, isRepost]);
+
+  // ─── Draft autosave (new listings only) ───
+  // Bring back an unfinished listing if the app was closed part-way through
+  useEffect(() => {
+    if (!sourceId) {
+      try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        const d = raw ? JSON.parse(raw) : null;
+        if (d && d.form && Date.now() - (d.savedAt || 0) < DRAFT_MAX_AGE_MS) {
+          setForm({ ...EMPTY_FORM, ...d.form });
+          setPhotos((d.photos || []).slice(0, MAX_PHOTOS).map((url, i) => ({ key: `draft-${i}`, src: url, url, status: "done" })));
+          setFeaturedItems(Array.isArray(d.featuredItems) ? d.featuredItems : []);
+          if (d.coordsSource === "current" && d.storedCurrentCoords) {
+            setStoredCurrentCoords(d.storedCurrentCoords);
+            setCoordsSource("current");
+          }
+          setDraftRestored(true);
+        }
+      } catch {}
+    }
+    draftReady.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save as you type (a moment after each change)
+  useEffect(() => {
+    if (sourceId || submitted || !draftReady.current) return;
+    const t = setTimeout(() => {
+      try {
+        const uploaded = photos.filter(p => p.status === "done" && p.url).map(p => p.url);
+        const hasContent = form.title || form.description || form.address || form.date || form.categories.length || uploaded.length || featuredItems.length;
+        if (!hasContent) { localStorage.removeItem(DRAFT_KEY); return; }
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+          form, photos: uploaded, featuredItems, coordsSource, storedCurrentCoords, savedAt: Date.now(),
+        }));
+      } catch {}
+    }, 400);
+    return () => clearTimeout(t);
+  }, [form, photos, featuredItems, coordsSource, storedCurrentCoords, sourceId, submitted]);
+
+  const startOver = () => {
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+    setForm(EMPTY_FORM);
+    setPhotos([]);
+    blobsRef.current.clear();
+    setFeaturedItems([]);
+    setStoredCurrentCoords(null);
+    setCoordsSource("address");
+    setErrors({});
+    setDraftRestored(false);
+  };
 
   if (!user) {
     return (
@@ -83,20 +161,58 @@ function CreatePageInner() {
   const set = (k, v) => { setForm(p => ({ ...p, [k]: v })); if (errors[k]) setErrors(p => ({ ...p, [k]: null })); };
   const toggleCat = (c) => set("categories", form.categories.includes(c) ? form.categories.filter(x => x !== c) : [...form.categories, c]);
 
+  // Upload one photo in the background and record how it went
+  const startUpload = (key, blob) => {
+    setPhotos(p => p.map(x => (x.key === key ? { ...x, status: "uploading" } : x)));
+    const job = uploadPhotoBlob(blob).then((res) => {
+      setPhotos(p => p.map(x => {
+        if (x.key !== key) return x;
+        return res.url ? { ...x, url: res.url, status: "done" } : { ...x, status: "failed" };
+      }));
+      if (res.url) blobsRef.current.delete(key);
+      uploadsRef.current.delete(key);
+      return res;
+    });
+    uploadsRef.current.set(key, job);
+  };
+
+  // Each photo is shrunk and starts uploading the moment it's picked, so
+  // posting the sale later doesn't have to wait for photos.
   const handlePhotos = async (e) => {
     const files = Array.from(e.target.files || []);
-    const remaining = 5 - form.photos.length;
+    const remaining = MAX_PHOTOS - photosRef.current.length;
+    if (fileRef.current) fileRef.current.value = "";
     if (remaining <= 0 || !files.length) return;
     setPhotoLoading(true);
-    try {
-      const toAdd = files.slice(0, remaining);
-      const compressed = await Promise.all(toAdd.map(f => compressImage(f, 800, 0.7)));
-      setForm(prev => ({ ...prev, photos: [...prev.photos, ...compressed].slice(0, 5) }));
-    } catch (err) {
-      console.error("Photo compression failed:", err);
+    setErrors(p => ({ ...p, photos: null }));
+    let unreadable = 0;
+    for (const file of files.slice(0, remaining)) {
+      try {
+        const blob = await compressToBlob(file, 1400, 0.8);
+        const key = `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        blobsRef.current.set(key, blob);
+        setPhotos(p => (p.length >= MAX_PHOTOS ? p : [...p, { key, src: URL.createObjectURL(blob), url: null, status: "uploading" }]));
+        startUpload(key, blob);
+      } catch (err) {
+        console.error("Photo could not be processed:", err);
+        unreadable += 1;
+      }
     }
+    if (unreadable) setErrors(p => ({ ...p, photos: `${unreadable === 1 ? "One photo" : `${unreadable} photos`} couldn't be read. Try a different one.` }));
     setPhotoLoading(false);
-    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const retryPhoto = (key) => {
+    const blob = blobsRef.current.get(key);
+    if (!blob) return;
+    setErrors(p => ({ ...p, photos: null }));
+    startUpload(key, blob);
+  };
+
+  const removePhoto = (key) => {
+    blobsRef.current.delete(key);
+    setPhotos(p => p.filter(x => x.key !== key));
+    setErrors(p => ({ ...p, photos: null }));
   };
 
   const useMyLocation = async () => {
@@ -147,6 +263,20 @@ function CreatePageInner() {
     setLoading(true);
     setErrors({});
 
+    // Let any photos that are still uploading finish first
+    if (uploadsRef.current.size) {
+      await Promise.all([...uploadsRef.current.values()]);
+      await new Promise(r => setTimeout(r, 60));
+    }
+    const finalPhotos = photosRef.current;
+    const notUploaded = finalPhotos.filter(p => p.status !== "done" || !p.url).length;
+    if (notUploaded) {
+      setLoading(false);
+      setErrors({ photos: `${notUploaded === 1 ? "One photo" : `${notUploaded} photos`} didn't upload. Tap ${notUploaded === 1 ? "it" : "them"} to retry, or remove ${notUploaded === 1 ? "it" : "them"}, then post again.` });
+      setTimeout(() => document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" }), 50);
+      return;
+    }
+
     // Resolve coordinates for the sale's pin location.
     // If user clicked "Use my location", we already have their device coords stored.
     // Otherwise, forward-geocode the typed address to get the actual sale location.
@@ -172,7 +302,7 @@ function CreatePageInner() {
         // Address couldn't be geocoded — show error, don't fall back to device location
         setLoading(false);
         setErrors({ address: "We couldn't find this address. Please double-check it or use 'Use my current location'." });
-        setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
+        setTimeout(() => document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" }), 50);
         return;
       }
     }
@@ -192,7 +322,7 @@ function CreatePageInner() {
       startTime: form.startTime || null,
       endTime: form.endTime || null,
       date: formatSaleDate(form.date, form.startTime, form.endTime, userTimeFormat, finalEndDate),
-      photos: form.photos,
+      photos: finalPhotos.map(p => p.url),
       tags: form.categories.length ? form.categories : ["General"],
       saleType: form.saleType || "yard",
       coords: saleCoords,
@@ -206,9 +336,10 @@ function CreatePageInner() {
     if (result?.error) {
       setErrors({ submit: result.error });
       // Scroll to the error at the bottom so user sees it
-      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }), 50);
+      setTimeout(() => { const m = document.querySelector("main"); m?.scrollTo({ top: m.scrollHeight, behavior: "smooth" }); }, 50);
       return;
     }
+    if (!isEditMode) { try { localStorage.removeItem(DRAFT_KEY); } catch {} }
     setSubmitted(true);
     setTimeout(() => router.push(isEditMode ? `/sale/${editId}` : "/"), 1500);
   };
@@ -229,27 +360,58 @@ function CreatePageInner() {
     <div className="p-5 space-y-5 pb-8">
       <div className="flex items-center gap-3 -mx-1">
         <button onClick={() => router.back()} className="p-2 hover:bg-stone-100 rounded-full"><ChevronLeft className="w-6 h-6 text-stone-600" /></button>
-        <h1 className="text-xl font-bold text-stone-800 font-display">{isEditMode ? "Edit Sale" : "Post a Yard Sale"}</h1>
+        <h1 className="text-xl font-bold text-stone-800 font-display">{isEditMode ? "Edit Sale" : isRepost ? "Repost Sale" : "Post a Yard Sale"}</h1>
       </div>
+
+      {draftRestored && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2.5">
+          <FileClock className="w-5 h-5 text-emerald-600 shrink-0" />
+          <p className="flex-1 text-emerald-800 text-xs">We saved your unfinished listing. Pick up where you left off.</p>
+          <button onClick={startOver} className="shrink-0 px-3 py-2 text-xs font-semibold text-emerald-700 bg-white border border-emerald-200 rounded-lg">
+            Start over
+          </button>
+        </div>
+      )}
+
+      {isRepost && editLoaded && (
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-xs">
+          Everything from your last sale is filled in. Just pick the new date and post.
+        </div>
+      )}
 
       {/* Photos */}
       <div>
-        <label className="block font-medium text-stone-800 mb-1.5">Photos <span className="text-stone-400 font-normal text-xs">({form.photos.length}/5)</span></label>
-        <p className="text-stone-500 text-xs mb-3">Add up to 5 photos — they'll be automatically compressed</p>
+        <label className="block font-medium text-stone-800 mb-1.5">Photos <span className="text-stone-400 font-normal text-xs">({photos.length}/{MAX_PHOTOS})</span></label>
+        <p className="text-stone-500 text-xs mb-3">Add up to {MAX_PHOTOS} photos — they upload as soon as you pick them</p>
         <div className="flex gap-2.5 flex-wrap">
-          {form.photos.map((src, i) => (
-            <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-stone-200 shadow-sm">
-              <img src={src} alt="" className="w-full h-full object-cover" />
-              <button onClick={() => set("photos", form.photos.filter((_, j) => j !== i))} className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center"><X className="w-3 h-3 text-white" /></button>
+          {photos.map((ph) => (
+            <div key={ph.key} className={`relative w-20 h-20 rounded-xl overflow-hidden border shadow-sm ${ph.status === "failed" ? "border-rose-400" : "border-stone-200"}`}>
+              <img src={ph.src} alt="" className={`w-full h-full object-cover ${ph.status !== "done" ? "opacity-50" : ""}`} />
+              {ph.status === "uploading" && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20" role="status" aria-label="Uploading photo">
+                  <Loader2 className="w-6 h-6 text-white animate-spin" />
+                </div>
+              )}
+              {ph.status === "failed" && (
+                <button type="button" onClick={() => retryPhoto(ph.key)} aria-label="Photo didn't upload. Tap to retry."
+                  className="absolute inset-0 flex flex-col items-center justify-center bg-rose-600/70 text-white">
+                  <RotateCcw className="w-5 h-5" />
+                  <span className="text-[10px] font-bold mt-0.5">Retry</span>
+                </button>
+              )}
+              <button type="button" onClick={() => removePhoto(ph.key)} aria-label="Remove photo" className="absolute top-0 right-0 w-7 h-7 flex items-center justify-center">
+                <span className="w-5 h-5 bg-black/60 rounded-full flex items-center justify-center"><X className="w-3 h-3 text-white" /></span>
+              </button>
             </div>
           ))}
-          {form.photos.length < 5 && (
-            <button onClick={() => fileRef.current?.click()} disabled={photoLoading}
+          {photos.length < MAX_PHOTOS && (
+            <button type="button" onClick={() => fileRef.current?.click()} disabled={photoLoading}
               className="w-20 h-20 border-2 border-dashed border-stone-300 rounded-xl flex flex-col items-center justify-center text-stone-400 hover:border-emerald-500 hover:text-emerald-500 transition disabled:opacity-50">
               {photoLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <><Camera className="w-5 h-5 mb-0.5" /><span className="text-[10px]">Add</span></>}
             </button>
           )}
         </div>
+        {errors.photos && <p className="text-rose-500 text-xs mt-2 flex items-center gap-1" role="alert"><AlertCircle className="w-3 h-3 shrink-0" />{errors.photos}</p>}
         <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotos} />
       </div>
 

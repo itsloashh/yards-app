@@ -26,7 +26,7 @@ function SaleDetailInner() {
   const router = useRouter();
   const { id } = useParams();
   const searchParams = useSearchParams();
-  const { sales, loc, unit, toggleSaved, isSaved, user, handleDeleteSale, incrementSaleViews, profile, loadSales, loadSaleById } = useApp();
+  const { sales, loc, unit, toggleSaved, isSaved, user, handleDeleteSale, incrementSaleViews, profile, loadSales, loadSaleById, logSaleEvent } = useApp();
   const [photo, setPhoto] = useState(0);
   const [showContact, setShowContact] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -125,6 +125,7 @@ function SaleDetailInner() {
   const hoursLeft = timeLeft ? Math.max(0, Math.floor(timeLeft / 3600000)) : null;
 
   const openDirections = () => {
+    logSaleEvent(sale.id, "directions");
     const dest = `${sale.coords.lat},${sale.coords.lng}`;
     // iPhone / iPad / Mac: Apple Maps, starting from where you are right now
     if (isAppleDevice()) {

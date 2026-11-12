@@ -1,10 +1,12 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { X, Link2, Download, Share2, Check, Loader2, Image as ImageIcon, Instagram } from "lucide-react";
+import { useApp } from "@/lib/AppContext";
 
 // Generates a branded shareable card on a canvas + provides link sharing.
 // Card layout: sale photo (top), dark gradient, title/date/location, Yard$ branding.
 export default function ShareModal({ sale, onClose }) {
+  const { logSaleEvent } = useApp();
   const canvasRef = useRef(null);
   const [copied, setCopied] = useState(false);
   const [cardUrl, setCardUrl] = useState(null);
@@ -146,6 +148,7 @@ export default function ShareModal({ sale, onClose }) {
   }, [sale]);
 
   const copyLink = async () => {
+    logSaleEvent(sale.id, "share");
     try {
       await navigator.clipboard.writeText(saleUrl);
       setCopied(true);
@@ -154,6 +157,7 @@ export default function ShareModal({ sale, onClose }) {
   };
 
   const shareLink = async () => {
+    logSaleEvent(sale.id, "share");
     if (navigator.share) {
       try {
         await navigator.share({
@@ -169,6 +173,7 @@ export default function ShareModal({ sale, onClose }) {
 
   const downloadCard = () => {
     if (!cardUrl) return;
+    logSaleEvent(sale.id, "share");
     const a = document.createElement("a");
     a.href = cardUrl;
     a.download = `yards-${(sale.title || "sale").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.png`;
@@ -177,6 +182,7 @@ export default function ShareModal({ sale, onClose }) {
 
   const shareCard = async () => {
     if (!cardUrl) return;
+    logSaleEvent(sale.id, "share");
     try {
       // Convert data URL to a File and share via Web Share API (mobile)
       const res = await fetch(cardUrl);

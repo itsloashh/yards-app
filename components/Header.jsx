@@ -147,6 +147,7 @@ export default function Header() {
             </div>
 
             {/* Quick "when" filters — tap one to turn it on, tap again to turn it off */}
+            {(pathname === "/" || pathname === "/map") && (
             <div className="flex items-center gap-2 mt-2.5 -mx-4 px-4 overflow-x-auto no-scrollbar">
               {WHEN_OPTIONS.map((o) => (
                 <button key={o.id} onClick={() => setWhen(when === o.id ? null : o.id)} aria-pressed={when === o.id}
@@ -155,6 +156,7 @@ export default function Header() {
                 </button>
               ))}
             </div>
+            )}
           </>
         )}
       </div>

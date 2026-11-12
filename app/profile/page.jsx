@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, Calendar, CheckCircle, MessageCircle, Edit, ShieldCheck, Loader2, Rocket, Camera, Star, Flag, ChevronRight } from "lucide-react";
+import { User, Plus, Eye, LogOut, UserCircle, ChevronLeft, Tag, Trash2, Clock, Calendar, CheckCircle, MessageCircle, Edit, ShieldCheck, Loader2, Rocket, Camera, Star, Flag, ChevronRight, Repeat } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { AVATAR_COLORS } from "@/lib/constants";
 import { formatSaleDate } from "@/lib/timeFormat";
@@ -303,7 +303,21 @@ function EditProfile({ profile, onSave, onClose }) {
 }
 
 function MySales({ activeSales, upcomingSales, pastSales, onClose, onDelete, onView }) {
-  const { profile } = useApp();
+  const { profile, loadMySaleStats } = useApp();
+  // Real numbers per sale: { [saleId]: { views, saves, directions, shares, routeAdds } }. null = not available.
+  const [stats, setStats] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    loadMySaleStats().then((s) => { if (!cancelled) setStats(s); });
+    return () => { cancelled = true; };
+  }, [loadMySaleStats]);
+
+  const allMine = [...activeSales, ...upcomingSales, ...pastSales];
+  const totals = stats ? allMine.reduce((t, s) => {
+    const x = stats[s.id];
+    if (!x) return t;
+    return { views: t.views + x.views, saves: t.saves + x.saves, directions: t.directions + x.directions, shares: t.shares + x.shares };
+  }, { views: 0, saves: 0, directions: 0, shares: 0 }) : null;
   const router = useRouter();
   const tf = profile?.time_format === "24h" ? "24h" : "12h";
   const [tab, setTab] = useState("active");
@@ -324,6 +338,23 @@ function MySales({ activeSales, upcomingSales, pastSales, onClose, onDelete, onV
         <button onClick={onClose} className="p-2 hover:bg-stone-100 rounded-full"><ChevronLeft className="w-6 h-6 text-stone-600" /></button>
         <h1 className="text-xl font-bold text-stone-800 font-display">My Sales</h1>
       </div>
+
+      {/* Totals across all of this seller's sales (real counts) */}
+      {totals && allMine.length > 0 && (
+        <div className="grid grid-cols-4 gap-2 mb-4">
+          {[
+            { label: "Views", value: totals.views },
+            { label: "Saves", value: totals.saves },
+            { label: "Directions", value: totals.directions },
+            { label: "Shares", value: totals.shares },
+          ].map((t) => (
+            <div key={t.label} className="bg-emerald-50 border border-emerald-100 rounded-xl py-2.5 text-center">
+              <p className="text-base font-bold text-emerald-700 leading-none">{t.value.toLocaleString()}</p>
+              <p className="text-[10px] text-stone-500 mt-1">{t.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Tab bar */}
       <div className="flex gap-1.5 mb-5 bg-stone-100 rounded-xl p-1">
@@ -388,11 +419,36 @@ function MySales({ activeSales, upcomingSales, pastSales, onClose, onDelete, onV
                   </div>
                   {s.address && <p className={`text-xs mt-0.5 ${isPast ? "text-stone-400" : "text-emerald-600"}`}>📍 {s.address}</p>}
                   <p className={`text-xs mt-0.5 ${isPast ? "text-stone-400" : "text-stone-500"}`}>{s.dateRaw ? formatSaleDate(s.dateRaw, s.startTime, s.endTime, tf, s.endDateRaw) : (s.date || "TBD")}</p>
-                  <p className="text-xs mt-0.5 text-stone-400 flex items-center gap-1">
-                    <Eye className="w-3 h-3" /> {(s.viewCount || 0).toLocaleString()} {s.viewCount === 1 ? "view" : "views"}
-                  </p>
+                  {!stats?.[s.id] && (
+                    <p className="text-xs mt-0.5 text-stone-400 flex items-center gap-1">
+                      <Eye className="w-3 h-3" /> {(s.viewCount || 0).toLocaleString()} {s.viewCount === 1 ? "view" : "views"}
+                    </p>
+                  )}
                 </div>
               </div>
+
+              {stats?.[s.id] && (
+                <div className="mx-3 mb-3 grid grid-cols-5 gap-1 bg-stone-50 border border-stone-100 rounded-lg py-2">
+                  {[
+                    { label: "Views", value: stats[s.id].views },
+                    { label: "Saves", value: stats[s.id].saves },
+                    { label: "Directions", value: stats[s.id].directions },
+                    { label: "Shares", value: stats[s.id].shares },
+                    { label: "Routes", value: stats[s.id].routeAdds },
+                  ].map((t) => (
+                    <div key={t.label} className="text-center">
+                      <p className={`text-sm font-bold leading-none ${isPast ? "text-stone-500" : "text-stone-800"}`}>{t.value.toLocaleString()}</p>
+                      <p className="text-[9px] text-stone-400 mt-1">{t.label}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!isPast && stats?.[s.id]?.saves > 0 && !(s.boostedUntil && new Date(s.boostedUntil).getTime() > Date.now()) && (
+                <p className="mx-3 mb-2 text-[11px] text-amber-700 font-medium">
+                  {stats[s.id].saves.toLocaleString()} {stats[s.id].saves === 1 ? "person has" : "people have"} saved this sale. Boost it to reach more buyers.
+                </p>
+              )}
 
               <div className="px-3 pb-3 flex gap-2">
                 {!isPast && !(s.boostedUntil && new Date(s.boostedUntil).getTime() > Date.now()) && (
@@ -405,6 +461,12 @@ function MySales({ activeSales, upcomingSales, pastSales, onClose, onDelete, onV
                   <button onClick={() => router.push(`/create?edit=${s.id}`)}
                     className="flex-1 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 font-medium rounded-lg text-xs flex items-center justify-center gap-1 hover:bg-emerald-100 transition">
                     <Edit className="w-3.5 h-3.5" /> Edit
+                  </button>
+                )}
+                {isPast && (
+                  <button onClick={() => router.push(`/create?repost=${s.id}`)}
+                    className="flex-1 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 font-medium rounded-lg text-xs flex items-center justify-center gap-1 hover:bg-emerald-100 transition">
+                    <Repeat className="w-3.5 h-3.5" /> Repost
                   </button>
                 )}
                 <button onClick={() => setDeleting(deleting === s.id ? null : s.id)}
